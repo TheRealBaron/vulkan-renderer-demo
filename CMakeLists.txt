@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(glm REQUIRED)
 
 function(get_shader_stage_keyword STAGE_KEYWORD RESULT_VAR)
     if(${STAGE_KEYWORD} STREQUAL "VERTEX")
@@ -91,4 +92,7 @@ target_link_libraries(vkhello
     PRIVATE 
         Vulkan::Vulkan
         glfw
+        glm::glm
 )
+
+

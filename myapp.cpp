@@ -5,17 +5,17 @@
 #include <limits>
 #include <algorithm>
 #include <optional>
-#include "myapp.h"
-#include "logger.hpp"
-
-
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan/vulkan.hpp"
-
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
+
+
+#include "myapp.h"
+#include "logger.hpp"
+#include "vertex_data.h"
 
 
 struct QueueFamilyIndices {
@@ -115,6 +115,8 @@ uint32_t current_index;
 
 
 //data storing objects
+VkBuffer vertex_buffer;
+VkDeviceMemory vertex_buffer_memory;
 
 
 
@@ -135,6 +137,10 @@ void create_command_pool();
 void create_command_buffer();
 void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index);
 void create_sync_objects();
+
+void create_vertex_buffer();
+uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
+
 void draw_frame();
 VkShaderModule create_shader_module();
 
@@ -180,6 +186,8 @@ static void myapp::initVulkan() {
 
     create_command_pool();
 
+    create_vertex_buffer();
+    
     create_command_buffer();
 
     create_sync_objects();
@@ -198,6 +206,10 @@ static void myapp::mainloop() {
 
 static void myapp::cleanup() {
     vkDeviceWaitIdle(device);
+
+    vkFreeMemory(device, vertex_buffer_memory, nullptr);
+    vkDestroyBuffer(device, vertex_buffer, nullptr);
+
 
     for (size_t i = 0; i < MAX_BRATCHES_IN_FLIGHT; ++i) {
         vkDestroyFence(device, frame_fences[i], nullptr);
@@ -478,7 +490,7 @@ void create_swapchain() {
     logger::log(std::string{"images in swapchain: "} + std::to_string(image_cnt));
 
     if (swapchain_support.capabilities.maxImageCount) {
-        image_cnt = min(image_cnt, swapchain_support.capabilities.maxImageCount);
+        image_cnt = std::min(image_cnt, swapchain_support.capabilities.maxImageCount);
     }
     
     QueueFamilyIndices indices(physical_device, surface);
@@ -658,6 +670,10 @@ void create_graphics_pipeline() {
     logger::log("created shader modules");
 
 
+    auto bind_desc = Vertex::get_binding_description();
+    auto attr_desc = Vertex::get_attribute_descriptions();
+
+
     std::array<VkPipelineShaderStageCreateInfo, 2> shader_infos = {
         VkPipelineShaderStageCreateInfo{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -676,10 +692,10 @@ void create_graphics_pipeline() {
 
     VkPipelineVertexInputStateCreateInfo vertex_input = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bind_desc,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attr_desc.size()),
+        .pVertexAttributeDescriptions = attr_desc.data()
     };
 
 
@@ -924,8 +940,9 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
 
 
     vkCmdBeginRenderPass(command_buf, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
+    
     vkCmdBindPipeline(command_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+    
 
     VkViewport viewport = {
         .x = 0.f,
@@ -943,7 +960,10 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     };
     vkCmdSetScissor(command_buf, 0, 1, &scissor);
 
-    vkCmdDraw(command_buf, 3, 1, 0, 0);
+    VkBuffer vertex_bufs[] = {vertex_buffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(command_buf, 0, 1, vertex_bufs, offsets);
+    vkCmdDraw(command_buf, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     
     vkCmdEndRenderPass(command_buf);
 
@@ -1003,7 +1023,6 @@ void draw_frame() {
     }
 
 
-
     vkResetFences(device, 1, &frame_fences[current_index]);
     images_in_flight[image_index] = frame_fences[current_index];
    
@@ -1048,4 +1067,61 @@ void draw_frame() {
     }
     
     current_index = (current_index + 1) % MAX_BRATCHES_IN_FLIGHT;
+}
+
+
+uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &mem_props);
+
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
+        VkMemoryPropertyFlags propflags = mem_props.memoryTypes[i].propertyFlags;
+        if ((type_filter & (1u << i)) && (propflags & properties) == properties) {
+            return i;
+        }
+    }
+    
+    throw std::runtime_error("could not find suitable memory type");
+}
+
+
+void create_vertex_buffer() {
+
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = sizeof(vertices[0]) * vertices.size(),
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    if (vkCreateBuffer(device, &buffer_info, nullptr, &vertex_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("could not create vertex buffer");
+    }
+    logger::log("created gpu buffer handle");
+
+    VkMemoryRequirements reqs;
+    vkGetBufferMemoryRequirements(device, vertex_buffer, &reqs);
+
+
+    VkMemoryAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = reqs.size,
+        .memoryTypeIndex = find_memory_type(
+            reqs.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        )
+    };
+
+    if (vkAllocateMemory(device, &alloc_info, nullptr, &vertex_buffer_memory) != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate vertex buffer memory");
+    }
+    logger::log("allocated gpu memory for vertex buffer");
+
+    void* data;
+    vkMapMemory(device, vertex_buffer_memory, 0, buffer_info.size, 0, &data);
+        memcpy(data, vertices.data(), static_cast<size_t>(buffer_info.size));
+    vkUnmapMemory(device, vertex_buffer_memory);
+    vkBindBufferMemory(device, vertex_buffer, vertex_buffer_memory, 0);
+    
+    logger::log("loaded vertex data to gpu");
 }
