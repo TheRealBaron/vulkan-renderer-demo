@@ -1181,23 +1181,38 @@ void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
 
 
 void create_vertex_buffer() {
+    
     VkDeviceSize bufsize = sizeof(vertices[0]) * vertices.size();
+    VkBuffer tmp_buf;
+    VkDeviceMemory tmp_buf_memory;
+    
     create_buffer(
         bufsize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        vertex_buffer,
-        vertex_buffer_memory 
+        tmp_buf,
+        tmp_buf_memory 
     );
-    
+
+    create_buffer(
+        bufsize,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        vertex_buffer,
+        vertex_buffer_memory
+    );
+
 
     void* data;
-    if (vkMapMemory(device, vertex_buffer_memory, 0, bufsize, 0, &data) != VK_SUCCESS) {
+    if (vkMapMemory(device, tmp_buf_memory, 0, bufsize, 0, &data) != VK_SUCCESS) {
         throw std::runtime_error("could not map gpu memory to virtual adress space");
     }
     memcpy(data, vertices.data(), bufsize);
-    vkUnmapMemory(device, vertex_buffer_memory);
+    vkUnmapMemory(device, tmp_buf_memory);
 
+    copy_buffer(tmp_buf, vertex_buffer, bufsize);
 
     logger::log("loaded vertex data to gpu");
+    vkFreeMemory(device, tmp_buf_memory, nullptr);
+    vkDestroyBuffer(device, tmp_buf, nullptr);
 }
