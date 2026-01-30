@@ -145,6 +145,8 @@ void create_buffer(
     VkDeviceMemory& buffer_memory
 );
 
+void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+
 
 void create_vertex_buffer();
 uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
@@ -1132,6 +1134,52 @@ void create_buffer(
 }
 
 
+void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
+    VkCommandBuffer command_buf;
+    
+    VkCommandBufferAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    VkBufferCopy copy_region = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = size
+    };
+
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &command_buf
+    };
+   
+
+    if (vkAllocateCommandBuffers(device, &alloc_info, &command_buf) != VK_SUCCESS) {
+        throw std::runtime_error("could not create temporary command buffer for copying");
+    }
+
+    if (vkBeginCommandBuffer(command_buf, &begin_info) != VK_SUCCESS) {
+        throw std::runtime_error("could not start recording copy commands");
+    }
+
+    vkCmdCopyBuffer(command_buf, src, dst, 1, &copy_region);
+    vkEndCommandBuffer(command_buf);
+
+    vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphics_queue);
+
+    vkFreeCommandBuffers(device, command_pool, 1, &command_buf);
+}
+
+
 void create_vertex_buffer() {
     VkDeviceSize bufsize = sizeof(vertices[0]) * vertices.size();
     create_buffer(
@@ -1149,7 +1197,7 @@ void create_vertex_buffer() {
     }
     memcpy(data, vertices.data(), bufsize);
     vkUnmapMemory(device, vertex_buffer_memory);
-    
-    logger::log("loaded vertex data to gpu");
 
+
+    logger::log("loaded vertex data to gpu");
 }
