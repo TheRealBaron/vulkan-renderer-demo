@@ -135,12 +135,23 @@ void create_graphics_pipeline();
 void create_framebuffers();
 void create_command_pool();
 void create_command_buffer();
-void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index);
-void create_sync_objects();
+
+
+void create_buffer(
+    VkDeviceSize size,
+    VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkBuffer& buffer,
+    VkDeviceMemory& buffer_memory
+);
+
 
 void create_vertex_buffer();
 uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 
+
+void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index);
+void create_sync_objects();
 void draw_frame();
 VkShaderModule create_shader_module();
 
@@ -514,7 +525,7 @@ void create_swapchain() {
         .pQueueFamilyIndices = qindices.data(),
         .preTransform = swapchain_support.capabilities.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = VK_PRESENT_MODE_MAILBOX_KHR,
+        .presentMode = VK_PRESENT_MODE_FIFO_KHR,
         .clipped = VK_TRUE,
         .oldSwapchain = VK_NULL_HANDLE
     };
@@ -921,7 +932,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
         throw std::runtime_error("could not start recording command buffer!");
     }
 
-    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    VkClearValue clear_color = {{{0.1f, 0.05f, 0.05f, 1.0f}}};
     
     VkRenderPassBeginInfo render_pass_info {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -1080,48 +1091,65 @@ uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties
             return i;
         }
     }
-    
+   
+
     throw std::runtime_error("could not find suitable memory type");
 }
 
+void create_buffer(
+    VkDeviceSize size,
+    VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkBuffer& buffer,
+    VkDeviceMemory& buffer_memory) {
 
-void create_vertex_buffer() {
-
-    VkBufferCreateInfo buffer_info = {
+    
+    VkBufferCreateInfo buf_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = sizeof(vertices[0]) * vertices.size(),
-        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .size = size,
+        .usage = usage,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-
-    if (vkCreateBuffer(device, &buffer_info, nullptr, &vertex_buffer) != VK_SUCCESS) {
+   
+    if (vkCreateBuffer(device, &buf_info, nullptr, &buffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create vertex buffer");
     }
-    logger::log("created gpu buffer handle");
 
     VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(device, vertex_buffer, &reqs);
-
+    vkGetBufferMemoryRequirements(device, buffer, &reqs);
 
     VkMemoryAllocateInfo alloc_info = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = reqs.size,
-        .memoryTypeIndex = find_memory_type(
-            reqs.memoryTypeBits,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        )
+        .memoryTypeIndex = find_memory_type(reqs.memoryTypeBits, properties)
     };
 
-    if (vkAllocateMemory(device, &alloc_info, nullptr, &vertex_buffer_memory) != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate vertex buffer memory");
+    if (vkAllocateMemory(device, &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS) {
+        throw std::runtime_error("could not allocate gpu memory");
     }
-    logger::log("allocated gpu memory for vertex buffer");
+
+    vkBindBufferMemory(device, buffer, buffer_memory, 0);
+}
+
+
+void create_vertex_buffer() {
+    VkDeviceSize bufsize = sizeof(vertices[0]) * vertices.size();
+    create_buffer(
+        bufsize,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        vertex_buffer,
+        vertex_buffer_memory 
+    );
+    
 
     void* data;
-    vkMapMemory(device, vertex_buffer_memory, 0, buffer_info.size, 0, &data);
-        memcpy(data, vertices.data(), static_cast<size_t>(buffer_info.size));
+    if (vkMapMemory(device, vertex_buffer_memory, 0, bufsize, 0, &data) != VK_SUCCESS) {
+        throw std::runtime_error("could not map gpu memory to virtual adress space");
+    }
+    memcpy(data, vertices.data(), bufsize);
     vkUnmapMemory(device, vertex_buffer_memory);
-    vkBindBufferMemory(device, vertex_buffer, vertex_buffer_memory, 0);
     
     logger::log("loaded vertex data to gpu");
+
 }
