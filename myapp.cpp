@@ -118,6 +118,8 @@ uint32_t current_index;
 VkBuffer vertex_buffer;
 VkDeviceMemory vertex_buffer_memory;
 
+VkBuffer index_buffer;
+VkDeviceMemory index_buffer_memory;
 
 
 // function headers
@@ -149,6 +151,7 @@ void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
 
 void create_vertex_buffer();
+void create_index_buffer();
 uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 
 
@@ -201,6 +204,8 @@ static void myapp::initVulkan() {
 
     create_vertex_buffer();
     
+    create_index_buffer();
+    
     create_command_buffer();
 
     create_sync_objects();
@@ -219,6 +224,9 @@ static void myapp::mainloop() {
 
 static void myapp::cleanup() {
     vkDeviceWaitIdle(device);
+    
+    vkFreeMemory(device, index_buffer_memory, nullptr);
+    vkDestroyBuffer(device, index_buffer, nullptr);
 
     vkFreeMemory(device, vertex_buffer_memory, nullptr);
     vkDestroyBuffer(device, vertex_buffer, nullptr);
@@ -925,17 +933,13 @@ void create_command_buffer() {
 
 void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     
+    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pInheritanceInfo = nullptr,
     };
 
-    if (vkBeginCommandBuffer(command_buf, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("could not start recording command buffer!");
-    }
-
-    VkClearValue clear_color = {{{0.1f, 0.05f, 0.05f, 1.0f}}};
-    
     VkRenderPassBeginInfo render_pass_info {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = render_pass,
@@ -950,13 +954,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
         .clearValueCount = 1,
         .pClearValues = &clear_color
     };
-
-
-    vkCmdBeginRenderPass(command_buf, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     
-    vkCmdBindPipeline(command_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
-    
-
     VkViewport viewport = {
         .x = 0.f,
         .y = 0.f,
@@ -965,18 +963,31 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
         .minDepth = 0.f,
         .maxDepth = 1.f
     };
-    vkCmdSetViewport(command_buf, 0, 1, &viewport);
-
+    
     VkRect2D scissor = {
         .offset = { .x = 0, .y = 0 },
         .extent = swap_chain_extent
     };
-    vkCmdSetScissor(command_buf, 0, 1, &scissor);
 
     VkBuffer vertex_bufs[] = {vertex_buffer};
     VkDeviceSize offsets[] = {0};
+    
+    if (vkBeginCommandBuffer(command_buf, &begin_info) != VK_SUCCESS) {
+        throw std::runtime_error("could not start recording command buffer!");
+    }
+
+    vkCmdBeginRenderPass(command_buf, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    
+    vkCmdBindPipeline(command_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+    
+    vkCmdSetViewport(command_buf, 0, 1, &viewport);
+
+    vkCmdSetScissor(command_buf, 0, 1, &scissor);
+
     vkCmdBindVertexBuffers(command_buf, 0, 1, vertex_bufs, offsets);
-    vkCmdDraw(command_buf, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+    vkCmdBindIndexBuffer(command_buf, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(command_buf, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     
     vkCmdEndRenderPass(command_buf);
 
@@ -1181,7 +1192,6 @@ void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
 
 
 void create_vertex_buffer() {
-    
     VkDeviceSize bufsize = sizeof(vertices[0]) * vertices.size();
     VkBuffer tmp_buf;
     VkDeviceMemory tmp_buf_memory;
@@ -1213,6 +1223,41 @@ void create_vertex_buffer() {
     copy_buffer(tmp_buf, vertex_buffer, bufsize);
 
     logger::log("loaded vertex data to gpu");
+    vkFreeMemory(device, tmp_buf_memory, nullptr);
+    vkDestroyBuffer(device, tmp_buf, nullptr);
+}
+
+void create_index_buffer() {
+    VkDeviceSize bufsize = sizeof(indices[0]) * indices.size();
+    VkBuffer tmp_buf;
+    VkDeviceMemory tmp_buf_memory;
+    
+    create_buffer(
+        bufsize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        tmp_buf,
+        tmp_buf_memory 
+    );
+    
+    create_buffer(
+        bufsize,
+        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        index_buffer,
+        index_buffer_memory 
+    );
+
+    void* data;
+    if (vkMapMemory(device, tmp_buf_memory, 0, bufsize, 0, &data) != VK_SUCCESS) {
+        throw std::runtime_error("could not map gpu memory to virtual adress space");
+    }
+    memcpy(data, indices.data(), bufsize);
+    vkUnmapMemory(device, tmp_buf_memory);
+
+    copy_buffer(tmp_buf, index_buffer, bufsize);
+    
+    logger::log("loaded index data to gpu");
     vkFreeMemory(device, tmp_buf_memory, nullptr);
     vkDestroyBuffer(device, tmp_buf, nullptr);
 }

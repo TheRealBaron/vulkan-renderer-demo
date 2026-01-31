@@ -35,13 +35,14 @@ struct Vertex {
 };
 
 
-const std::array<Vertex, 6> vertices = {
-    Vertex{glm::vec2(-0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}, 
-    Vertex{glm::vec2(0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f)}, 
-    Vertex{glm::vec2(0.5f, 0.5f), glm::vec3(0.0f, 0.0f, 1.0f)},   
-    
-    Vertex{glm::vec2(0.5f, 0.5f), glm::vec3(0.0f, 0.0f, 1.0f)},   
-    Vertex{glm::vec2(-0.5f, 0.5f), glm::vec3(1.0f, 1.0f, 0.0f)},  
-    Vertex{glm::vec2(-0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)}  
+const std::array<Vertex, 4> vertices = {
+    Vertex{glm::vec2(-0.5f, -0.5f), glm::vec3(1.0f, 0.0f, 0.0f)},
+    Vertex{glm::vec2(0.5f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f)},
+    Vertex{glm::vec2(0.5f, 0.5f), glm::vec3(0.0f, 0.0f, 1.0f)},
+    Vertex{glm::vec2(-0.5f, 0.5f), glm::vec3(1.0f, 1.0f, 1.0f)}
 };
 
+
+const std::array<uint32_t, 6> indices = {
+    0, 1, 2, 2, 3, 0
+};
