@@ -115,11 +115,16 @@ uint32_t current_index;
 
 
 //data storing objects
+
+
+//unmutable data
 VkBuffer vertex_buffer;
 VkDeviceMemory vertex_buffer_memory;
-
 VkBuffer index_buffer;
 VkDeviceMemory index_buffer_memory;
+
+
+//mutable data
 
 
 // function headers
@@ -129,7 +134,9 @@ void create_instance();
 void pick_qhysical_device();
 void create_logical_device();
 void create_surface();
+
 void create_swapchain();
+
 void create_image_views();
 void read_bytes(const std::string& filename, std::vector<char>& buffer);
 void create_render_pass();
@@ -973,7 +980,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     VkDeviceSize offsets[] = {0};
     
     if (vkBeginCommandBuffer(command_buf, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("could not start recording command buffer!");
+        throw std::runtime_error("could not start recording command buffer");
     }
 
     vkCmdBeginRenderPass(command_buf, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -985,8 +992,9 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     vkCmdSetScissor(command_buf, 0, 1, &scissor);
 
     vkCmdBindVertexBuffers(command_buf, 0, 1, vertex_bufs, offsets);
-
+    
     vkCmdBindIndexBuffer(command_buf, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+    
     vkCmdDrawIndexed(command_buf, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     
     vkCmdEndRenderPass(command_buf);
@@ -1226,6 +1234,7 @@ void create_vertex_buffer() {
     vkFreeMemory(device, tmp_buf_memory, nullptr);
     vkDestroyBuffer(device, tmp_buf, nullptr);
 }
+
 
 void create_index_buffer() {
     VkDeviceSize bufsize = sizeof(indices[0]) * indices.size();
