@@ -5,13 +5,14 @@
 #include <limits>
 #include <algorithm>
 #include <optional>
+
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "vulkan/vulkan.hpp"
 #define GLFW_INCLUDE_VULKAN
+
+#include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
-
 
 #include "myapp.h"
 #include "logger.hpp"
