@@ -31,14 +31,14 @@ inline static void log_msg_type(LStatus status) {
 namespace logger {
 
 template<typename ...Args>
-void log(LStatus status, const std::format_string<Args...> fmt, Args&&... args) {
+inline void log(LStatus status, const std::format_string<Args...> fmt, Args&&... args) {
     log_msg_type(status);
     std::println(fmt, std::forward<Args>(args)...);
 }
 
 
 //old version compatibility
-void log(const std::string& s) {
+inline void log(const std::string& s) {
 #ifndef NDEBUG
     
     std::println("[DEBUG] {}", s);
@@ -46,7 +46,7 @@ void log(const std::string& s) {
 #endif
 }
 
-void log(LStatus status, const std::string_view str) {
+inline void log(LStatus status, const std::string_view str) {
 #ifndef NDEBUG
     
     switch (status) {
@@ -67,7 +67,7 @@ void log(LStatus status, const std::string_view str) {
 
 
 template<std::ranges::input_range R>
-void log_enum(LStatus status, const std::string& msg, R&& r) {
+inline void log_enum(LStatus status, const std::string& msg, R&& r) {
 #ifndef NDEBUG
     log_msg_type(status);
 

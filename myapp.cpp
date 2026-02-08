@@ -290,19 +290,7 @@ void create_instance() {
         "VK_LAYER_KHRONOS_synchronization2"
     };  
 
-    std::string requested = "Requested extentions: ";
-    for (const char* extention_name : extensions) {
-        requested += extention_name;
-        requested += ", ";
-    }
-    logger::log(requested);
-    requested = "Requested validation layers: ";
-    for (const char* vlayer : validationLayers) {
-        requested += vlayer;
-        requested += ", ";
-    }
-    logger::log(requested);
-
+    logger::log_enum(LStatus::INFO, "Requested validation layers: ", validationLayers);
 
     VkApplicationInfo app_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -326,7 +314,7 @@ void create_instance() {
         throw std::runtime_error("failed create vulkan instance");
     }
     
-    logger::log("successfully created instance");
+    logger::log(LStatus::INFO, "successfully created instance");
 }
 
 void pick_qhysical_device() {
@@ -357,7 +345,11 @@ void pick_qhysical_device() {
 
             vkGetPhysicalDeviceProperties2(physical_device, &physical_device_properties);
             vkGetPhysicalDeviceFeatures2(physical_device, &physical_device_features);
-            logger::log(std::string{"found_suitable device: "} + physical_device_properties.properties.deviceName);
+            logger::log(
+                LStatus::INFO, 
+                "found suitable device: {}", 
+                physical_device_properties.properties.deviceName
+            );
             return;
         }
     }
@@ -385,32 +377,27 @@ bool device_suitable(VkPhysicalDevice candidate) {
     std::vector<VkExtensionProperties> props(ext_cnt);
     vkEnumerateDeviceExtensionProperties(candidate, nullptr, &ext_cnt, props.data());
 
-    std::string log_msg = "checking suitability for ";
-    log_msg += dprops.properties.deviceName;
-    log_msg += ": ";
+    VkBool32 is_discrete = dprops.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 
-    bool is_discrete = dprops.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-    log_msg += std::to_string(is_discrete) + '|';
-
-    
-    bool has_swapchain_support = false;
+    VkBool32 has_swapchain_support = false;
     for (const auto& prop : props) {
         if (std::string{prop.extensionName} == "VK_KHR_swapchain") {
             has_swapchain_support = true;
             break;
         }
     }
-    log_msg += std::to_string(has_swapchain_support) + '|';
 
-    
-    bool swap_chain_adequate = false;
+    VkBool32 swap_chain_adequate = false;
     if (has_swapchain_support) {
         SwapChainSupportDetails swapchain_support(candidate, surface);
         swap_chain_adequate = !swapchain_support.formats.empty() && !swapchain_support.present_modes.empty();
     }
-    log_msg += std::to_string(swap_chain_adequate);
 
-    logger::log(log_msg);
+    logger::log(
+        LStatus::INFO,
+        "checking suitability for {}: {}|{}|{}",
+        dprops.properties.deviceName, is_discrete, has_swapchain_support, swap_chain_adequate
+    );
 
     return dprops.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
            has_swapchain_support &&
@@ -464,7 +451,7 @@ void create_logical_device() {
     vkGetDeviceQueue(device, *indices.graphics_family, 0, &graphics_queue);
     vkGetDeviceQueue(device, *indices.present_family, 0, &present_queue);
     
-    logger::log("successfully created logical device");
+    logger::log(LStatus::INFO, "successfully created logical device");
 }
 
 
@@ -478,7 +465,7 @@ void create_surface() {
     if (vkCreateWin32SurfaceKHR(instance, &sinfo, nullptr, &surface) != VK_SUCCESS) {
         throw std::runtime_error("failed to create window surface");
     }
-    logger::log("created surface successfully");
+    logger::log(LStatus::INFO, "created surface successfully");
 }
 
 
@@ -516,7 +503,6 @@ void create_swapchain() {
     VkExtent2D myextent = create_extent(swapchain_support.capabilities);
 
     uint32_t image_cnt = swapchain_support.capabilities.minImageCount + 1;
-    logger::log(std::string{"images in swapchain: "} + std::to_string(image_cnt));
 
     if (swapchain_support.capabilities.maxImageCount) {
         image_cnt = std::min(image_cnt, swapchain_support.capabilities.maxImageCount);
@@ -554,7 +540,7 @@ void create_swapchain() {
     }
    
 
-    logger::log("created swapchain");
+    logger::log(LStatus::INFO, "created swapchain");
 
     swap_chain_image_format = VK_FORMAT_B8G8R8A8_SRGB;
     swap_chain_extent = myextent;
@@ -562,7 +548,8 @@ void create_swapchain() {
     vkGetSwapchainImagesKHR(device, swap_chain, &image_cnt, nullptr);
     swap_chain_images.resize(image_cnt);
     vkGetSwapchainImagesKHR(device, swap_chain, &image_cnt, swap_chain_images.data());
-    logger::log("got " + std::to_string(image_cnt) + " images from swap chain");
+    
+    logger::log(LStatus::INFO, "got {} images from swapchain", image_cnt);
 }
 
 
@@ -596,7 +583,7 @@ void create_image_views() {
         }
     }
 
-    logger::log("created image views from swap chain");
+    logger::log(LStatus::INFO, "created image views from swap chain");
 }
 
 
@@ -682,7 +669,7 @@ void create_render_pass() {
     if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) {
         throw std::runtime_error("could not create render pass");
     }
-    logger::log("created render pass");
+    logger::log(LStatus::INFO, "created render pass");
 }
 
 
@@ -696,7 +683,7 @@ void create_graphics_pipeline() {
 
     VkShaderModule vertex_module = create_shader_module(vert_shader_binary);
     VkShaderModule fragment_module = create_shader_module(frag_shader_binary);
-    logger::log("created shader modules");
+    logger::log(LStatus::INFO, "created shader modules");
 
 
     auto bind_desc = Vertex::get_binding_description();
@@ -841,7 +828,7 @@ void create_graphics_pipeline() {
     if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
     }
-    logger::log("created pipeline layout");
+    logger::log(LStatus::INFO, "created pipeline layout");
 
 
     VkGraphicsPipelineCreateInfo pipeline_info = {
@@ -874,7 +861,7 @@ void create_graphics_pipeline() {
         throw std::runtime_error("could not create graphics pipeline");
 
     }
-    logger::log("created graphics pipeline");
+    logger::log(LStatus::INFO, "created graphics pipeline");
     
     vkDestroyShaderModule(device, fragment_module, nullptr);
     vkDestroyShaderModule(device, vertex_module, nullptr);
@@ -899,7 +886,7 @@ void create_framebuffers() {
             throw std::runtime_error("could not create framebuffer");
         }
     }
-    logger::log("created frame buffers");
+    logger::log(LStatus::INFO, "created frame buffers");
 
 }
 
@@ -935,7 +922,7 @@ void create_command_buffer() {
         throw std::runtime_error("could not allocate command buffers");
     }
 
-    logger::log("allocated command buffers");
+    logger::log(LStatus::INFO, "allocated command buffers");
 }
 
 
@@ -1029,15 +1016,13 @@ void create_sync_objects() {
         vkCreateFence(device, &fence_info, nullptr, &frame_fences[i]);
     }
     
-    logger::log("created sync objects");
+    logger::log(LStatus::INFO, "created sync objects");
 }
 
 
 void draw_frame() {
 
     uint32_t image_index;
-    std::string log_msg = "sent to graphics queue&present queue. current_image: ";
-    log_msg += std::to_string(current_index);
     
     vkWaitForFences(device, 1, &frame_fences[current_index], VK_TRUE, UINT64_MAX);
 
@@ -1051,7 +1036,6 @@ void draw_frame() {
     );
 
     if (images_in_flight[image_index] != VK_NULL_HANDLE) {
-        //logger::log("warning: waiting for image " + std::to_string(image_index) + " to free");
         vkWaitForFences(device, 1, &images_in_flight[image_index], VK_TRUE, UINT64_MAX);
     }
 
@@ -1059,7 +1043,6 @@ void draw_frame() {
     vkResetFences(device, 1, &frame_fences[current_index]);
     images_in_flight[image_index] = frame_fences[current_index];
    
-    log_msg += ", image_index: " + std::to_string(image_index);
     
     vkResetCommandBuffer(command_buffers[image_index], 0);
     record_command_buffer(command_buffers[image_index], image_index);
@@ -1231,7 +1214,7 @@ void create_vertex_buffer() {
 
     copy_buffer(tmp_buf, vertex_buffer, bufsize);
 
-    logger::log("loaded vertex data to gpu");
+    logger::log(LStatus::INFO, "loaded vertex data to gpu");
     vkFreeMemory(device, tmp_buf_memory, nullptr);
     vkDestroyBuffer(device, tmp_buf, nullptr);
 }
@@ -1267,7 +1250,7 @@ void create_index_buffer() {
 
     copy_buffer(tmp_buf, index_buffer, bufsize);
     
-    logger::log("loaded index data to gpu");
+    logger::log(LStatus::INFO, "loaded index data to gpu");
     vkFreeMemory(device, tmp_buf_memory, nullptr);
     vkDestroyBuffer(device, tmp_buf, nullptr);
 }

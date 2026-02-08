@@ -1,4 +1,4 @@
-#include <iostream>
+#include "logger.hpp"
 #include "myapp.h"
 
 
@@ -6,7 +6,7 @@ int main(int argc, const char* argv[]) {
     try {
         myapp::run();
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        logger::log(LStatus::FATAL, "caught runtime error: {}", e.what());
         return -1;
     }
 
