@@ -79,6 +79,8 @@ endfunction()
 add_executable(vkhello 
     main.cpp
     myapp.cpp
+    GraphicsContext.cpp
+    UtilObjects.cpp
 )
 
 compile_shaders(vkhello

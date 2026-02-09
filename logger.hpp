@@ -32,8 +32,10 @@ namespace logger {
 
 template<typename ...Args>
 inline void log(LStatus status, const std::format_string<Args...> fmt, Args&&... args) {
+#ifndef NDEBUG
     log_msg_type(status);
     std::println(fmt, std::forward<Args>(args)...);
+#endif
 }
 
 
