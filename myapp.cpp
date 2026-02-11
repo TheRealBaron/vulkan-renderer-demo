@@ -249,10 +249,9 @@ void create_swapchain() {
         image_cnt = std::min(image_cnt, swapchain_support.capabilities.maxImageCount);
     }
     
-    QueueFamilyIndices indices(phys_dev, surf);
     std::array<uint32_t, 2> qindices = {
-        *indices.graphics_family,
-        *indices.present_family,
+        graphics_context->get_graphics_family_index(),
+        graphics_context->get_present_family_index(),
     };
 
 
@@ -639,14 +638,10 @@ void create_framebuffers() {
 
 void create_command_pool() {
     VkDevice mydevice = graphics_context->get_device();
-    QueueFamilyIndices indices(
-        graphics_context->get_physical_device(), 
-        graphics_context->get_surface()
-    );
     VkCommandPoolCreateInfo pool_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = indices.graphics_family.value()
+        .queueFamilyIndex = graphics_context->get_graphics_family_index()
     };
 
 
@@ -894,12 +889,11 @@ void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
     VkDevice mydevice = graphics_context->get_device();
     VkCommandPool cmdpool;
     VkCommandBuffer cmdbuffer;
-    QueueFamilyIndices indices(graphics_context->get_physical_device(), graphics_context->get_surface());
 
     VkCommandPoolCreateInfo pool_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = *indices.transfer_family
+        .queueFamilyIndex = graphics_context->get_transfer_family_index()
     };
 
 
