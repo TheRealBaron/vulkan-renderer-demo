@@ -161,13 +161,17 @@ void GraphicsContext::find_physical_device() {
 }
 
 
-
 void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_extentions) {
-    QueueFamilyIndices indices(physical_device, surface); 
+    QueueFamilyIndices qindices(physical_device, surface); 
 
-    if (!indices.is_complete()) {
+    if (!qindices.is_complete()) {
         throw std::runtime_error("could not find all required queue families for this device");
     }
+    logger::log(LStatus::INFO, "got queue family indices: {}, {}, {}",
+                *qindices.graphics_family,
+                *qindices.present_family,
+                *qindices.transfer_family);
+
 
     VkPhysicalDeviceFeatures2 dfeatures = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2
@@ -179,19 +183,19 @@ void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_exte
     std::array<VkDeviceQueueCreateInfo, 3> qinfo = {
         VkDeviceQueueCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = *indices.graphics_family,
+            .queueFamilyIndex = *qindices.graphics_family,
             .queueCount = 1,
             .pQueuePriorities = &priority[0]
         },
         VkDeviceQueueCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = *indices.present_family,
+            .queueFamilyIndex = *qindices.present_family,
             .queueCount = 1,
             .pQueuePriorities = &priority[1]
         },
         VkDeviceQueueCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = *indices.transfer_family,
+            .queueFamilyIndex = *qindices.transfer_family,
             .queueCount = 1,
             .pQueuePriorities = &priority[2]
         }
@@ -213,9 +217,13 @@ void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_exte
         throw std::runtime_error("could not create logical device");
     }
 
-    vkGetDeviceQueue(device, *indices.graphics_family, 0, &graphics_queue);
-    vkGetDeviceQueue(device, *indices.present_family, 0, &present_queue);
-    vkGetDeviceQueue(device, *indices.transfer_family, 0, &transfer_queue);
+    graphics_family = *qindices.graphics_family;
+    present_family = *qindices.present_family;
+    transfer_family = *qindices.transfer_family;
+
+    vkGetDeviceQueue(device, *qindices.graphics_family, 0, &graphics_queue);
+    vkGetDeviceQueue(device, *qindices.present_family, 0, &present_queue);
+    vkGetDeviceQueue(device, *qindices.transfer_family, 0, &transfer_queue);
     
     logger::log(LStatus::INFO, "successfully created logical device");
 }

@@ -28,6 +28,9 @@ public:
     VkQueue get_graphics_queue() { return graphics_queue; }
     VkQueue get_present_queue() { return present_queue; }
     VkQueue get_transfer_queue() { return transfer_queue; }
+    uint32_t get_graphics_family_index() { return graphics_family; }
+    uint32_t get_present_family_index() { return present_family; }
+    uint32_t get_transfer_family_index() { return transfer_family; }
 
 private:
     VkInstance instance;
@@ -37,6 +40,9 @@ private:
     VkQueue graphics_queue;
     VkQueue present_queue;
     VkQueue transfer_queue;
+    uint32_t graphics_family;
+    uint32_t present_family;
+    uint32_t transfer_family;
     //TODO: add GPU memory allocation infrastructure
 
     void create_instance(
