@@ -27,6 +27,7 @@ public:
     VkSurfaceKHR get_surface() { return surface; }
     VkQueue get_graphics_queue() { return graphics_queue; }
     VkQueue get_present_queue() { return present_queue; }
+    VkQueue get_transfer_queue() { return transfer_queue; }
 
 private:
     VkInstance instance;
@@ -35,6 +36,7 @@ private:
     VkSurfaceKHR surface;
     VkQueue graphics_queue;
     VkQueue present_queue;
+    VkQueue transfer_queue;
     //TODO: add GPU memory allocation infrastructure
 
     void create_instance(

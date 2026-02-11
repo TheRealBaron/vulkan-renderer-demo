@@ -174,9 +174,9 @@ void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_exte
     };
     vkGetPhysicalDeviceFeatures2(physical_device, &dfeatures);
 
-    std::array<float, 2> priority = {1.f, 1.f};
+    std::array<float, 3> priority = {1.f, 1.f, 1.f};
 
-    std::array<VkDeviceQueueCreateInfo, 2> qinfo = {
+    std::array<VkDeviceQueueCreateInfo, 3> qinfo = {
         VkDeviceQueueCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
             .queueFamilyIndex = *indices.graphics_family,
@@ -188,13 +188,19 @@ void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_exte
             .queueFamilyIndex = *indices.present_family,
             .queueCount = 1,
             .pQueuePriorities = &priority[1]
+        },
+        VkDeviceQueueCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = *indices.transfer_family,
+            .queueCount = 1,
+            .pQueuePriorities = &priority[2]
         }
     };
 
 
     VkDeviceCreateInfo dinfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .queueCreateInfoCount = 2,
+        .queueCreateInfoCount = static_cast<uint32_t>(qinfo.size()),
         .pQueueCreateInfos = qinfo.data(),
         .enabledExtensionCount = static_cast<uint32_t>(req_gpu_extentions.size()),
         .ppEnabledExtensionNames = req_gpu_extentions.data(),
@@ -209,6 +215,7 @@ void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_exte
 
     vkGetDeviceQueue(device, *indices.graphics_family, 0, &graphics_queue);
     vkGetDeviceQueue(device, *indices.present_family, 0, &present_queue);
+    vkGetDeviceQueue(device, *indices.transfer_family, 0, &transfer_queue);
     
     logger::log(LStatus::INFO, "successfully created logical device");
 }

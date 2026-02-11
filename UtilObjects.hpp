@@ -16,6 +16,7 @@ struct SwapChainSupportDetails {
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphics_family;
     std::optional<uint32_t> present_family;
+    std::optional<uint32_t> transfer_family;
     
     QueueFamilyIndices(VkPhysicalDevice ph_dev, VkSurfaceKHR srf);
     bool is_complete();

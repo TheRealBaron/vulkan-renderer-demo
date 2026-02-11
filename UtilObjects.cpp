@@ -21,7 +21,7 @@ SwapChainSupportDetails::SwapChainSupportDetails(VkPhysicalDevice ph_dev, VkSurf
 
 
 QueueFamilyIndices::QueueFamilyIndices(VkPhysicalDevice ph_dev, VkSurfaceKHR srf) 
-    :graphics_family(std::nullopt), present_family(std::nullopt) {
+    :graphics_family(std::nullopt), present_family(std::nullopt), transfer_family(std::nullopt) {
         
     uint32_t qcnt;
     vkGetPhysicalDeviceQueueFamilyProperties(ph_dev, &qcnt, nullptr);
@@ -44,12 +44,18 @@ QueueFamilyIndices::QueueFamilyIndices(VkPhysicalDevice ph_dev, VkSurfaceKHR srf
             present_family = i;
             continue;
         }
+
+        if ((flags & VK_QUEUE_TRANSFER_BIT) && !transfer_family.has_value()) {
+            transfer_family = i;
+            continue;
+        }
     }
 }
 
 
 bool QueueFamilyIndices::is_complete() {
     return graphics_family.has_value() &&
-           present_family.has_value();
+           present_family.has_value() &&
+           transfer_family.has_value();
 }
 

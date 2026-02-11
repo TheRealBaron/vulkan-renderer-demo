@@ -891,14 +891,17 @@ void create_buffer(
 
 
 void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
-    VkCommandBuffer command_buf;
-    
-    VkCommandBufferAllocateInfo alloc_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = command_pool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1
+    VkDevice mydevice = graphics_context->get_device();
+    VkCommandPool cmdpool;
+    VkCommandBuffer cmdbuffer;
+    QueueFamilyIndices indices(graphics_context->get_physical_device(), graphics_context->get_surface());
+
+    VkCommandPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = *indices.transfer_family
     };
+
 
     VkCommandBufferBeginInfo begin_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -914,25 +917,35 @@ void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1,
-        .pCommandBuffers = &command_buf
+        .pCommandBuffers = &cmdbuffer
     };
    
+    if (vkCreateCommandPool(mydevice, &pool_info, nullptr, &cmdpool) != VK_SUCCESS) {
+        throw std::runtime_error("could not create command pool");
+    } 
 
-    if (vkAllocateCommandBuffers(graphics_context->get_device(), &alloc_info, &command_buf) != VK_SUCCESS) {
+    VkCommandBufferAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = cmdpool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+    if (vkAllocateCommandBuffers(mydevice, &alloc_info, &cmdbuffer) != VK_SUCCESS) {
         throw std::runtime_error("could not create temporary command buffer for copying");
     }
 
-    if (vkBeginCommandBuffer(command_buf, &begin_info) != VK_SUCCESS) {
+    if (vkBeginCommandBuffer(cmdbuffer, &begin_info) != VK_SUCCESS) {
         throw std::runtime_error("could not start recording copy commands");
     }
 
-    vkCmdCopyBuffer(command_buf, src, dst, 1, &copy_region);
-    vkEndCommandBuffer(command_buf);
+    vkCmdCopyBuffer(cmdbuffer, src, dst, 1, &copy_region);
+    vkEndCommandBuffer(cmdbuffer);
 
-    vkQueueSubmit(graphics_context->get_graphics_queue(), 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphics_context->get_graphics_queue());
+    vkQueueSubmit(graphics_context->get_transfer_queue(), 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphics_context->get_transfer_queue());
 
-    vkFreeCommandBuffers(graphics_context->get_device(), command_pool, 1, &command_buf);
+    vkFreeCommandBuffers(mydevice, cmdpool, 1, &cmdbuffer);
+    vkDestroyCommandPool(mydevice, cmdpool, nullptr);
 }
 
 
