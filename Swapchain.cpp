@@ -1,31 +1,21 @@
+#include <algorithm>
+
 #include "Swapchain.hpp"
 #include "UtilObjects.hpp"
+#include "logger.hpp"
 
 
 Swapchain::Swapchain(GraphicsContext* ptr, GLFWwindow* window) : gc_ptr(ptr) {
     if (gc_ptr == nullptr) {
         throw std::runtime_error("could not create swapchain: the graphics context is invalid");
     }
-    VkPhysicalDevice myphysdevice = gc_ptr->get_physical_device();
     VkDevice mydevice = gc_ptr->get_device();
-    VkSurfaceKHR mysurface = gc_ptr->get_surface();
-    SwapChainSupportDetails swapchain_support(myphysdevice, mysurface);
-    
-    create_extent(swapchain_support.capabilities, window);
-    format = VK_FORMAT_B8G8R8A8_SRGB;
-    
-    uint32_t image_cnt = swapchain_support.capabilities.minImageCount + 1;
-    if (swapchain_support.capabilities.maxImageCount) {
-        image_cnt = std::min(image_cnt, swapchain_support.capabilities.maxImageCount);
-    }
 
-    create_swapchain(mydevice, mysurface, image_cnt);
+    create_swapchain(window);
     logger::log(LStatus::INFO, "created swapchain");
     
-    vkGetSwapchainImagesKHR(mydevice, swapchain, &image_cnt, nullptr);
-    images.resize(image_cnt);
-    vkGetSwapchainImagesKHR(mydevice, swapchain, &image_cnt, images.data());
-    logger::log(LStatus::INFO, "got {} images from swapchain", image_cnt);
+    extract_images();
+    logger::log(LStatus::INFO, "got {} images from swapchain", get_images_cnt());
 
     create_image_views();
     logger::log(LStatus::INFO, "created image views");
@@ -38,7 +28,7 @@ Swapchain::Swapchain(GraphicsContext* ptr, GLFWwindow* window) : gc_ptr(ptr) {
 }
 
 
-Swapchain~Swapchain() {
+Swapchain::~Swapchain() {
     VkDevice mydevice = gc_ptr->get_device();
 
     for (VkFramebuffer& buf : framebuffers) {
@@ -56,9 +46,9 @@ Swapchain~Swapchain() {
 }
 
 
-void Swapchain::create_extent(const VkSurfaceCapabilitiesKHR& capabilities, const GLFWwindow* window) {
+void Swapchain::create_extent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window) {
     if (capabilities.currentExtent.width != UINT32_MAX) {
-        extent = currentExtent;
+        extent = capabilities.currentExtent;
         return;
     }
 
@@ -71,20 +61,33 @@ void Swapchain::create_extent(const VkSurfaceCapabilitiesKHR& capabilities, cons
     };
 
     extent.width = std::clamp(
-        res.width, 
+        extent.width, 
         capabilities.minImageExtent.width,
         capabilities.maxImageExtent.width
     );
 
     extent.height = std::clamp(
-        res.height, 
+        extent.height, 
         capabilities.minImageExtent.height,
         capabilities.maxImageExtent.height
     );
 }
 
 
-void Swapchain::create_swapchain(VkDevice mydevice, VkSurfaceKHR mysurface, uint32_t image_cnt) {
+void Swapchain::create_swapchain(GLFWwindow* window) {
+    VkDevice mydevice = gc_ptr->get_device();
+    VkPhysicalDevice myphysdevice = gc_ptr->get_physical_device();
+    VkSurfaceKHR mysurface = gc_ptr->get_surface();
+    SwapChainSupportDetails swapchain_support(myphysdevice, mysurface);
+    
+    create_extent(swapchain_support.capabilities, window);
+    format = VK_FORMAT_B8G8R8A8_SRGB;
+    
+    uint32_t image_cnt = swapchain_support.capabilities.minImageCount + 1;
+    if (swapchain_support.capabilities.maxImageCount) {
+        image_cnt = std::min(image_cnt, swapchain_support.capabilities.maxImageCount);
+    }
+    
     std::array<uint32_t, 2> qindices = {
         gc_ptr->get_graphics_family_index(),
         gc_ptr->get_present_family_index(),
@@ -115,13 +118,22 @@ void Swapchain::create_swapchain(VkDevice mydevice, VkSurfaceKHR mysurface, uint
 }
 
 
+void Swapchain::extract_images() {
+    VkDevice mydevice = gc_ptr->get_device();
+    uint32_t image_cnt;
+    vkGetSwapchainImagesKHR(mydevice, swapchain, &image_cnt, nullptr);
+    images.resize(image_cnt);
+    vkGetSwapchainImagesKHR(mydevice, swapchain, &image_cnt, images.data());
+}
+
+
 void Swapchain::create_image_views() {
-    size_t cnt = imgaes.size();
+    size_t cnt = images.size();
     VkImageViewCreateInfo imv_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = VK_NULL_HANDLE,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = format;
+        .format = format,
         .components = {
             .r = VK_COMPONENT_SWIZZLE_IDENTITY,
             .g = VK_COMPONENT_SWIZZLE_IDENTITY,
