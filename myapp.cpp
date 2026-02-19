@@ -27,9 +27,9 @@ VkExtent2D swap_chain_extent;
 std::vector<VkImage> swap_chain_images;
 std::vector<VkImageView> swap_chain_image_views;
 std::vector<VkFramebuffer> swapchain_framebuffers;
+VkRenderPass render_pass;
 
 VkPipelineLayout pipeline_layout;
-VkRenderPass render_pass;
 VkPipeline graphics_pipeline;
 VkCommandPool command_pool;
 std::vector<VkCommandBuffer> command_buffers;
@@ -50,7 +50,6 @@ VkBuffer vertex_buffer;
 VkDeviceMemory vertex_buffer_memory;
 VkBuffer index_buffer;
 VkDeviceMemory index_buffer_memory;
-
 
 //mutable data
 
