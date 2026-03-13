@@ -11,16 +11,18 @@
 #include "UtilObjects.hpp"
 #include "GraphicsContext.hpp"
 #include "Swapchain.hpp"
+#include "Shader.hpp"
 
 #include "myapp.h"
 #include "logger.hpp"
 #include "vertex_data.h"
 
 
-// common vulkan objects
+// common objects
 GLFWwindow* window;
 std::unique_ptr<GraphicsContext> graphics_context;
 std::unique_ptr<Swapchain> swapchain;
+
 
 VkPipelineLayout pipeline_layout;
 VkPipeline graphics_pipeline;
@@ -32,8 +34,8 @@ constexpr size_t MAX_BRATCHES_IN_FLIGHT = 3;
 //sync objects
 std::array<VkSemaphore, MAX_BRATCHES_IN_FLIGHT> image_available_semaphores;
 std::vector<VkSemaphore> render_finished_semaphores;
-std::array<VkFence, MAX_BRATCHES_IN_FLIGHT> frame_fences;
-std::vector<VkFence> images_in_flight;
+std::array<VkFence, MAX_BRATCHES_IN_FLIGHT> frame_fences; //personal fence for each image
+std::vector<VkFence> images_in_flight; // the last fence used by this image in flight
 uint32_t current_index;
 
 
@@ -91,7 +93,7 @@ static void myapp::initWindow() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    window = glfwCreateWindow(1440, 810, "hello vulkan", nullptr, nullptr);
+    window = glfwCreateWindow(1440, 810, "lighting model demo", nullptr, nullptr);
 }
 
 
@@ -206,37 +208,17 @@ VkShaderModule create_shader_module(const std::vector<uint32_t>& src) {
 void create_graphics_pipeline() {
     VkDevice mydevice = graphics_context->get_device();
     VkExtent2D swap_chain_extent = swapchain->get_extent();
-    
-    std::vector<uint32_t> vert_shader_binary;  
-    std::vector<uint32_t> frag_shader_binary;
-
-    read_bytes("shaders/vertex.spv", vert_shader_binary);
-    read_bytes("shaders/fragment.spv", frag_shader_binary);
-
-    VkShaderModule vertex_module = create_shader_module(vert_shader_binary);
-    VkShaderModule fragment_module = create_shader_module(frag_shader_binary);
-    logger::log(LStatus::INFO, "created shader modules");
-
 
     auto bind_desc = Vertex::get_binding_description();
     auto attr_desc = Vertex::get_attribute_descriptions();
-
+    
+    Shader vertex_shader(graphics_context.get(), "shaders/vertex.spv", ShaderType::VERTEX);
+    Shader fragment_shader(graphics_context.get(), "shaders/fragment.spv", ShaderType::FRAGMENT);
 
     std::array<VkPipelineShaderStageCreateInfo, 2> shader_infos = {
-        VkPipelineShaderStageCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertex_module,
-            .pName = "main",
-        },
-        VkPipelineShaderStageCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragment_module,
-            .pName = "main",
-        }
+        vertex_shader.get_stage_info(),
+        fragment_shader.get_stage_info()
     };
-
 
     VkPipelineVertexInputStateCreateInfo vertex_input = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -391,12 +373,9 @@ void create_graphics_pipeline() {
         &graphics_pipeline) != VK_SUCCESS) {
 
         throw std::runtime_error("could not create graphics pipeline");
-
     }
     logger::log(LStatus::INFO, "created graphics pipeline");
-    
-    vkDestroyShaderModule(mydevice, fragment_module, nullptr);
-    vkDestroyShaderModule(mydevice, vertex_module, nullptr);
+
 }
 
 
@@ -430,6 +409,11 @@ void create_command_buffer() {
     command_buffers.resize(swapchain->get_images_cnt());
     if (vkAllocateCommandBuffers(mydevice, &alloc_info, command_buffers.data()) != VK_SUCCESS) {
         throw std::runtime_error("could not allocate command buffers");
+    }
+
+    for (size_t i = 0; i < command_buffers.size(); ++i) {
+        vkResetCommandBuffer(command_buffers[i], 0);
+        record_command_buffer(command_buffers[i], i);
     }
 
     logger::log(LStatus::INFO, "allocated command buffers");
@@ -561,8 +545,8 @@ void draw_frame() {
     images_in_flight[image_index] = frame_fences[current_index];
    
     
-    vkResetCommandBuffer(command_buffers[image_index], 0);
-    record_command_buffer(command_buffers[image_index], image_index);
+    //vkResetCommandBuffer(command_buffers[image_index], 0);
+    //record_command_buffer(command_buffers[image_index], image_index);
     std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}; 
 
 

@@ -71,7 +71,7 @@ function(compile_shaders TARGET_NAME)
         endif() 
     endforeach()
 
-    message(STATUS "compiled shaders: ${ALL_OUTPUT_SPV}")
+    message(STATUS "created commands for compiling shaders: ${ALL_OUTPUT_SPV}")
 
     add_custom_target(compile_all_shaders ALL DEPENDS ${ALL_OUTPUT_SPV})
     add_dependencies(${TARGET_NAME} compile_all_shaders)
@@ -84,6 +84,7 @@ add_executable(vkhello
     GraphicsContext.cpp
     Swapchain.cpp
     UtilObjects.cpp
+    Shader.cpp
 )
 
 compile_shaders(vkhello
