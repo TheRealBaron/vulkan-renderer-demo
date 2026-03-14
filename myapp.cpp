@@ -28,14 +28,13 @@ VkPipelineLayout pipeline_layout;
 VkPipeline graphics_pipeline;
 VkCommandPool command_pool;
 std::vector<VkCommandBuffer> command_buffers;
-constexpr size_t MAX_BRATCHES_IN_FLIGHT = 3;
+constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
 
 
 //sync objects
-std::array<VkSemaphore, MAX_BRATCHES_IN_FLIGHT> image_available_semaphores;
+std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> image_available_semaphores;
 std::vector<VkSemaphore> render_finished_semaphores;
-std::array<VkFence, MAX_BRATCHES_IN_FLIGHT> frame_fences; //personal fence for each image
-std::vector<VkFence> images_in_flight; // the last fence used by this image in flight
+std::array<VkFence, MAX_FRAMES_IN_FLIGHT> frame_fences;
 uint32_t current_index;
 
 
@@ -129,6 +128,7 @@ static void myapp::initVulkan() {
     glfwShowWindow(window);
     glfwMakeContextCurrent(window);
     current_index = 0;
+
 }
 
 
@@ -151,7 +151,7 @@ static void myapp::cleanup() {
     vkDestroyBuffer(mydevice, vertex_buffer, nullptr);
 
 
-    for (size_t i = 0; i < MAX_BRATCHES_IN_FLIGHT; ++i) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         vkDestroyFence(mydevice, frame_fences[i], nullptr);
         vkDestroySemaphore(mydevice, image_available_semaphores[i], nullptr);
     }
@@ -346,13 +346,12 @@ void create_sync_objects() {
 
     size_t cnt = swapchain->get_images_cnt();
 
-    images_in_flight.assign(cnt, VK_NULL_HANDLE);
     render_finished_semaphores.resize(cnt);
 
     for (size_t i = 0; i < cnt; ++i) {
         vkCreateSemaphore(mydevice, &semaphore_info, nullptr, &render_finished_semaphores[i]);
     }
-    for (size_t i = 0; i < MAX_BRATCHES_IN_FLIGHT; ++i) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         vkCreateSemaphore(mydevice, &semaphore_info, nullptr, &image_available_semaphores[i]);
         vkCreateFence(mydevice, &fence_info, nullptr, &frame_fences[i]);
     }
@@ -378,26 +377,19 @@ void draw_frame() {
         &image_index
     );
 
-    if (images_in_flight[image_index] != VK_NULL_HANDLE) {
-        vkWaitForFences(mydevice, 1, &images_in_flight[image_index], VK_TRUE, UINT64_MAX);
-    }
-
     vkResetFences(mydevice, 1, &frame_fences[current_index]);
-    images_in_flight[image_index] = frame_fences[current_index];
-   
     
-    //vkResetCommandBuffer(command_buffers[image_index], 0);
-    //record_command_buffer(command_buffers[image_index], image_index);
+    vkResetCommandBuffer(command_buffers[current_index], 0);
+    record_command_buffer(command_buffers[current_index], image_index);
+    
     std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}; 
-
-
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &image_available_semaphores[current_index],
         .pWaitDstStageMask = wait_stages.data(),
         .commandBufferCount = 1,
-        .pCommandBuffers = &command_buffers[image_index],
+        .pCommandBuffers = &command_buffers[current_index],
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &render_finished_semaphores[image_index]
     }; 
@@ -425,7 +417,7 @@ void draw_frame() {
         throw std::runtime_error("could not send image to present queue");
     }
     
-    current_index = (current_index + 1) % MAX_BRATCHES_IN_FLIGHT;
+    current_index = (current_index + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 
