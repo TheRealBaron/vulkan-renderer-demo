@@ -85,6 +85,7 @@ add_executable(vkhello
     Swapchain.cpp
     UtilObjects.cpp
     Shader.cpp
+    PipelineBuilder.cpp
 )
 
 compile_shaders(vkhello
