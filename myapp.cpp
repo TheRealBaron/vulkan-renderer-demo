@@ -211,7 +211,7 @@ void create_graphics_pipeline() {
 
     auto bind_desc = Vertex::get_binding_description();
     auto attr_desc = Vertex::get_attribute_descriptions();
-    
+
     Shader vertex_shader(graphics_context.get(), "shaders/vertex.spv", ShaderType::VERTEX);
     Shader fragment_shader(graphics_context.get(), "shaders/fragment.spv", ShaderType::FRAGMENT);
 
@@ -235,28 +235,10 @@ void create_graphics_pipeline() {
         .primitiveRestartEnable = VK_FALSE
     };
 
-
-    VkViewport viewport = {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = static_cast<float>(swap_chain_extent.width),
-        .height = static_cast<float>(swap_chain_extent.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
-
-
-    VkRect2D scissor = {
-        .offset = {0, 0},
-        .extent = swap_chain_extent
-    };
-
-
     std::array<VkDynamicState, 2> dynamic_states = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
+        VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+        VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT
     };
-
 
     VkPipelineDynamicStateCreateInfo dynamic_state = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -267,10 +249,10 @@ void create_graphics_pipeline() {
 
     VkPipelineViewportStateCreateInfo viewport_state = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor
+        .viewportCount = 0,
+        .pViewports = nullptr, //&viewport,
+        .scissorCount = 0,
+        .pScissors = nullptr //&scissor
     };
    
 
@@ -473,9 +455,9 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     
     vkCmdBindPipeline(command_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
     
-    vkCmdSetViewport(command_buf, 0, 1, &viewport);
+    vkCmdSetViewportWithCount(command_buf, 1, &viewport);
 
-    vkCmdSetScissor(command_buf, 0, 1, &scissor);
+    vkCmdSetScissorWithCount(command_buf, 1, &scissor);
 
     vkCmdBindVertexBuffers(command_buf, 0, 1, vertex_bufs, offsets);
     
