@@ -9,6 +9,7 @@
 #include "GraphicsContext.hpp"
 #include "Swapchain.hpp"
 #include "PipelineManager.hpp"
+#include "FrameManager.hpp"
 
 #include "myapp.h"
 #include "logger.hpp"
@@ -20,34 +21,14 @@ GLFWwindow* window;
 std::unique_ptr<GraphicsContext> graphics_context;
 std::unique_ptr<Swapchain> swapchain;
 std::unique_ptr<PipelineManager> pipeline_manager;
-
-
-VkCommandPool command_pool;
-std::vector<VkCommandBuffer> command_buffers;
-constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
-
-
-//sync objects
-std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> image_available_semaphores;
-std::vector<VkSemaphore> render_finished_semaphores;
-std::array<VkFence, MAX_FRAMES_IN_FLIGHT> frame_fences;
-uint32_t current_index;
-
-//data storing objects
+std::unique_ptr<CommandManager> command_manager;
+std::unique_ptr<FrameManager> frame_manager;
 
 //unmutable data
 VkBuffer vertex_buffer;
 VkDeviceMemory vertex_buffer_memory;
 VkBuffer index_buffer;
 VkDeviceMemory index_buffer_memory;
-//mutable data
-
-
-// function headers
-void create_framebuffers();
-void create_command_pool();
-void create_command_buffer();
-
 
 void create_buffer(
     VkDeviceSize size,
@@ -63,10 +44,7 @@ void create_index_buffer();
 uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
 
 
-void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index);
-void create_sync_objects();
 void draw_frame();
-
 
 void myapp::run() {
     myapp::initWindow();
@@ -111,6 +89,7 @@ static void myapp::initVulkan() {
         graphics_context.get(), 
         swapchain.get()
     );
+
     pipeline_builder->setup_input();
     pipeline_builder->setup_vertex_shader("shaders/vertex.spv");
     pipeline_builder->setup_fragment_shader("shaders/fragment.spv");
@@ -118,20 +97,19 @@ static void myapp::initVulkan() {
 
     pipeline_manager->add_pipeline("trivial", *pipeline_builder.get());
     
-    create_command_pool();
-
+    command_manager = std::make_unique<CommandManager>(graphics_context.get());
+    frame_manager = std::make_unique<FrameManager>(
+        graphics_context.get(), 
+        command_manager.get(), 
+        swapchain->get_images_cnt()
+    );
+    
     create_vertex_buffer();
     
     create_index_buffer();
-    
-    create_command_buffer();
-
-    create_sync_objects();
 
     glfwShowWindow(window);
     glfwMakeContextCurrent(window);
-    current_index = 0;
-
 }
 
 
@@ -153,61 +131,11 @@ static void myapp::cleanup() {
     vkFreeMemory(mydevice, vertex_buffer_memory, nullptr);
     vkDestroyBuffer(mydevice, vertex_buffer, nullptr);
 
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        vkDestroyFence(mydevice, frame_fences[i], nullptr);
-        vkDestroySemaphore(mydevice, image_available_semaphores[i], nullptr);
-    }
-    for (size_t i = 0; i < render_finished_semaphores.size(); ++i) {
-        vkDestroySemaphore(mydevice, render_finished_semaphores[i], nullptr);
-    }
-
-    vkDestroyCommandPool(mydevice, command_pool, nullptr);
-
     glfwDestroyWindow(window);
     glfwTerminate();
 }
 
 
-void create_command_pool() {
-    VkDevice mydevice = graphics_context->get_device();
-    VkCommandPoolCreateInfo pool_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = graphics_context->get_graphics_family_index()
-    };
-
-
-    if (vkCreateCommandPool(mydevice, &pool_info, nullptr, &command_pool) != VK_SUCCESS) {
-        throw std::runtime_error("could not create command pool");
-    }
-
-}
-
-
-void create_command_buffer() {
-
-    VkDevice mydevice = graphics_context->get_device();
-    
-    VkCommandBufferAllocateInfo alloc_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = command_pool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = static_cast<uint32_t>(swapchain->get_images_cnt())
-    };
-
-    command_buffers.resize(swapchain->get_images_cnt());
-    if (vkAllocateCommandBuffers(mydevice, &alloc_info, command_buffers.data()) != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate command buffers");
-    }
-
-    for (size_t i = 0; i < command_buffers.size(); ++i) {
-        vkResetCommandBuffer(command_buffers[i], 0);
-        record_command_buffer(command_buffers[i], i);
-    }
-
-    logger::log(LStatus::INFO, "allocated command buffers");
-}
 
 
 void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
@@ -278,72 +206,40 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     if (vkEndCommandBuffer(command_buf) != VK_SUCCESS) {
         throw std::runtime_error("could not record command buffer");
     }
-
-}
-
-
-void create_sync_objects() {
-    VkDevice mydevice = graphics_context->get_device();
-    VkSemaphoreCreateInfo semaphore_info = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-    };
-    VkFenceCreateInfo fence_info = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT
-    };
-
-    size_t cnt = swapchain->get_images_cnt();
-
-    render_finished_semaphores.resize(cnt);
-
-    for (size_t i = 0; i < cnt; ++i) {
-        vkCreateSemaphore(mydevice, &semaphore_info, nullptr, &render_finished_semaphores[i]);
-    }
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        vkCreateSemaphore(mydevice, &semaphore_info, nullptr, &image_available_semaphores[i]);
-        vkCreateFence(mydevice, &fence_info, nullptr, &frame_fences[i]);
-    }
-    
-    logger::log(LStatus::INFO, "created sync objects");
 }
 
 
 void draw_frame() {
-    VkDevice mydevice = graphics_context->get_device();
-    VkQueue my_graphics_queue = graphics_context->get_graphics_queue();
-    VkQueue my_present_queue = graphics_context->get_present_queue();
-    uint32_t image_index;
+    VkQueue graphics_queue = graphics_context->get_graphics_queue();
+    VkQueue present_queue = graphics_context->get_present_queue();
     
-    vkWaitForFences(mydevice, 1, &frame_fences[current_index], VK_TRUE, UINT64_MAX);
+    frame_manager->wait_fence();
+    
+    uint32_t image_index = swapchain->acquire_next_image(frame_manager->get_image_available_semaphore());
+    
+    frame_manager->reset_fence();
+    
+    vkResetCommandBuffer(frame_manager->get_current_cmdbuf(), 0);
+    record_command_buffer(frame_manager->get_current_cmdbuf(), image_index);
 
-    vkAcquireNextImageKHR(
-        mydevice,
-        swapchain->get_swapchain(),
-        UINT64_MAX,
-        image_available_semaphores[current_index],
-        VK_NULL_HANDLE,
-        &image_index
-    );
-
-    vkResetFences(mydevice, 1, &frame_fences[current_index]);
-    
-    vkResetCommandBuffer(command_buffers[current_index], 0);
-    record_command_buffer(command_buffers[current_index], image_index);
-    
     std::array<VkPipelineStageFlags, 1> wait_stages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}; 
+    std::array<VkSemaphore, 1> wait_semaphores = { frame_manager->get_image_available_semaphore() }; 
+    std::array<VkSemaphore, 1> signal_semaphores = { swapchain->get_semaphore(image_index) }; 
+    std::array<VkCommandBuffer, 1> cmd_bufs = { frame_manager->get_current_cmdbuf() };
+    
     VkSubmitInfo submit_info = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &image_available_semaphores[current_index],
+        .pWaitSemaphores = wait_semaphores.data(),
         .pWaitDstStageMask = wait_stages.data(),
         .commandBufferCount = 1,
-        .pCommandBuffers = &command_buffers[current_index],
+        .pCommandBuffers = cmd_bufs.data(),
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &render_finished_semaphores[image_index]
+        .pSignalSemaphores = signal_semaphores.data()
     }; 
 
 
-    if (vkQueueSubmit(my_graphics_queue, 1, &submit_info, frame_fences[current_index]) != VK_SUCCESS) {
+    if (vkQueueSubmit(graphics_queue, 1, &submit_info, frame_manager->get_current_fence()) != VK_SUCCESS) {
         throw std::runtime_error("could not submit draw command buffer");
     }
 
@@ -352,7 +248,7 @@ void draw_frame() {
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &render_finished_semaphores[image_index],
+        .pWaitSemaphores = signal_semaphores.data(),
         .swapchainCount = 1,
         .pSwapchains = myswapchains,
         .pImageIndices = &image_index,
@@ -360,12 +256,12 @@ void draw_frame() {
     };
 
     
-    VkResult res = vkQueuePresentKHR(my_present_queue, &present_info);
+    VkResult res = vkQueuePresentKHR(present_queue, &present_info);
     if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-        throw std::runtime_error("could not send image to present queue");
+        throw std::runtime_error("the swapchain is out of date");
     }
-    
-    current_index = (current_index + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    frame_manager->increment_cur_image();
 }
 
 
@@ -551,3 +447,5 @@ void create_index_buffer() {
     vkFreeMemory(mydevice, tmp_buf_memory, nullptr);
     vkDestroyBuffer(mydevice, tmp_buf, nullptr);
 }
+
+

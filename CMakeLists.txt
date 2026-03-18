@@ -87,6 +87,8 @@ add_executable(vkhello
     Shader.cpp
     PipelineBuilder.cpp
     PipelineManager.cpp
+    CommandManager.cpp
+    FrameManager.cpp
 )
 
 compile_shaders(vkhello

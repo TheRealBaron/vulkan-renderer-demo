@@ -16,7 +16,7 @@ public:
         const std::vector<const char*>& req_validation_layers,
         const std::vector<const char*>& req_instance_extentions,
         const std::vector<const char*>& req_gpu_extentions,
-        GLFWwindow* window
+        GLFWwindow *const window
     );
 
     ~GraphicsContext();
@@ -54,7 +54,7 @@ private:
 
     void find_physical_device();
 
-    void create_surface(GLFWwindow* window);
+    void create_surface(GLFWwindow *const window);
     
     void create_device(const std::vector<const char*>& req_gpu_extentions);
 };

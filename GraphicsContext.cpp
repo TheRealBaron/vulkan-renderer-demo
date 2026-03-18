@@ -17,7 +17,7 @@ GraphicsContext::GraphicsContext(
     const std::vector<const char*>& req_validation_layers,
     const std::vector<const char*>& req_instance_extentions,
     const std::vector<const char*>& req_gpu_extentions,
-    GLFWwindow* window)
+    GLFWwindow *const window)
     :
         instance        (VK_NULL_HANDLE),
         physical_device (VK_NULL_HANDLE),

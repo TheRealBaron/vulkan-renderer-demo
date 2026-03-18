@@ -5,7 +5,7 @@
 #include "logger.hpp"
 
 
-Swapchain::Swapchain(GraphicsContext* ptr, GLFWwindow* window) : gc_ptr(ptr) {
+Swapchain::Swapchain(GraphicsContext *const ptr, GLFWwindow *const window) : gc_ptr(ptr) {
     if (gc_ptr == nullptr) {
         throw std::runtime_error("could not create swapchain: the graphics context is invalid");
     }
@@ -25,11 +25,20 @@ Swapchain::Swapchain(GraphicsContext* ptr, GLFWwindow* window) : gc_ptr(ptr) {
 
     create_framebuffers(); 
     logger::log(LStatus::INFO, "created framebuffers");
+
+
+    create_semaphores();
+    logger::log(LStatus::INFO, "created semaphores for syncing graphics queue");
+
 }
 
 
 Swapchain::~Swapchain() {
     VkDevice mydevice = gc_ptr->get_device();
+
+    for (VkSemaphore& sem : render_finished) {
+        vkDestroySemaphore(mydevice, sem, nullptr);
+    }
 
     for (VkFramebuffer& buf : framebuffers) {
         vkDestroyFramebuffer(mydevice, buf, nullptr);
@@ -42,7 +51,6 @@ Swapchain::~Swapchain() {
     }
 
     vkDestroySwapchainKHR(mydevice, swapchain, nullptr);
-    gc_ptr = nullptr;
 }
 
 
@@ -74,7 +82,7 @@ void Swapchain::create_extent(const VkSurfaceCapabilitiesKHR& capabilities, GLFW
 }
 
 
-void Swapchain::create_swapchain(GLFWwindow* window) {
+void Swapchain::create_swapchain(GLFWwindow *const window) {
     VkDevice mydevice = gc_ptr->get_device();
     VkPhysicalDevice myphysdevice = gc_ptr->get_physical_device();
     VkSurfaceKHR mysurface = gc_ptr->get_surface();
@@ -230,3 +238,33 @@ void Swapchain::create_framebuffers() {
         }
     }
 }
+
+
+void Swapchain::create_semaphores() {
+    render_finished.resize(get_images_cnt());
+    VkSemaphoreCreateInfo semaphore_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+
+    for (VkSemaphore& sem : render_finished) {
+        if (vkCreateSemaphore(gc_ptr->get_device(), &semaphore_info, nullptr, &sem) != VK_SUCCESS) {
+            throw std::runtime_error("could not create semaphore");
+        }
+    }
+}
+
+uint32_t Swapchain::acquire_next_image(VkSemaphore sem) {
+    uint32_t index;
+    
+    vkAcquireNextImageKHR(
+        gc_ptr->get_device(),
+        swapchain,
+        UINT64_MAX,
+        sem,
+        VK_NULL_HANDLE,
+        &index
+    );
+
+    return index;
+}
+
