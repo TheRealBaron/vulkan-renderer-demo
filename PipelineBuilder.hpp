@@ -14,9 +14,10 @@ public:
     void setup_fragment_shader(const std::filesystem::path& path);
     void setup_layout();
 
-    void build_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout);
     
 private:
+    void build_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout);
+    
     GraphicsContext *const gc_ptr;
     Swapchain       *const sc_ptr;
     
@@ -36,5 +37,8 @@ private:
     VkPipelineColorBlendAttachmentState color_blend_attachment;
     VkPipelineColorBlendStateCreateInfo color_blend_state;
     VkPipelineLayoutCreateInfo pipeline_layout_info; //customizable
+
+
+    friend class PipelineManager;
 };
 

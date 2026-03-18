@@ -1,9 +1,6 @@
-#include <fstream>
-#include <cassert>
 #include <vector>
 #include <array>
 #include <algorithm>
-#include <optional>
 #include <memory>
 
 #define GLFW_INCLUDE_VULKAN
@@ -11,7 +8,7 @@
 #include "UtilObjects.hpp"
 #include "GraphicsContext.hpp"
 #include "Swapchain.hpp"
-#include "PipelineBuilder.hpp"
+#include "PipelineManager.hpp"
 
 #include "myapp.h"
 #include "logger.hpp"
@@ -22,10 +19,9 @@
 GLFWwindow* window;
 std::unique_ptr<GraphicsContext> graphics_context;
 std::unique_ptr<Swapchain> swapchain;
+std::unique_ptr<PipelineManager> pipeline_manager;
 
 
-VkPipelineLayout pipeline_layout;
-VkPipeline graphics_pipeline;
 VkCommandPool command_pool;
 std::vector<VkCommandBuffer> command_buffers;
 constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
@@ -36,7 +32,6 @@ std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> image_available_semaphores;
 std::vector<VkSemaphore> render_finished_semaphores;
 std::array<VkFence, MAX_FRAMES_IN_FLIGHT> frame_fences;
 uint32_t current_index;
-
 
 //data storing objects
 
@@ -49,9 +44,6 @@ VkDeviceMemory index_buffer_memory;
 
 
 // function headers
-void read_bytes(const std::string& filename, std::vector<char>& buffer);
-void create_render_pass();
-void create_graphics_pipeline();
 void create_framebuffers();
 void create_command_pool();
 void create_command_buffer();
@@ -74,7 +66,6 @@ uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties
 void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index);
 void create_sync_objects();
 void draw_frame();
-VkShaderModule create_shader_module();
 
 
 void myapp::run() {
@@ -111,10 +102,22 @@ static void myapp::initVulkan() {
     std::vector<const char*> gpu_reqs = {"VK_KHR_swapchain"};
 
     graphics_context = std::make_unique<GraphicsContext>(validation_layers, instance_reqs, gpu_reqs, window);
+    
     swapchain = std::make_unique<Swapchain>(graphics_context.get(), window);
     
-    create_graphics_pipeline();
+    pipeline_manager = std::make_unique<PipelineManager>(graphics_context->get_device());
 
+    std::unique_ptr<PipelineBuilder> pipeline_builder = std::make_unique<PipelineBuilder>(
+        graphics_context.get(), 
+        swapchain.get()
+    );
+    pipeline_builder->setup_input();
+    pipeline_builder->setup_vertex_shader("shaders/vertex.spv");
+    pipeline_builder->setup_fragment_shader("shaders/fragment.spv");
+    pipeline_builder->setup_layout();
+
+    pipeline_manager->add_pipeline("trivial", *pipeline_builder.get());
+    
     create_command_pool();
 
     create_vertex_buffer();
@@ -161,63 +164,8 @@ static void myapp::cleanup() {
 
     vkDestroyCommandPool(mydevice, command_pool, nullptr);
 
-    vkDestroyPipeline(mydevice, graphics_pipeline, nullptr);
-    
-    vkDestroyPipelineLayout(mydevice, pipeline_layout, nullptr);
-    
     glfwDestroyWindow(window);
     glfwTerminate();
-}
-
-
-void read_bytes(const std::string& filename, std::vector<uint32_t>& buffer) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open shader binary");
-    }
-    
-    size_t fsize = static_cast<size_t>(file.tellg());
-    
-    if (fsize % 4 != 0) {
-        throw std::runtime_error("the spir-v binary size is != 0 (mod 4)");
-    }
-
-    buffer.resize(fsize / 4);
-    
-    file.seekg(0);
-    file.read(reinterpret_cast<char*>(buffer.data()), fsize);
-    file.close();
-}
-
-
-VkShaderModule create_shader_module(const std::vector<uint32_t>& src) {
-    VkDevice mydevice = graphics_context->get_device();
-    
-    VkShaderModuleCreateInfo module_info = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = src.size() * sizeof(uint32_t),
-        .pCode = src.data()
-    };
-    VkShaderModule res;
-    if (vkCreateShaderModule(mydevice, &module_info, nullptr, &res) != VK_SUCCESS) {
-        throw std::runtime_error("could not create shader module");
-    }
-    return res;
-}
-
-void create_graphics_pipeline() {
-
-    std::unique_ptr<PipelineBuilder> pipeline_builder = std::make_unique<PipelineBuilder>(
-        graphics_context.get(), 
-        swapchain.get()
-    );
-    pipeline_builder->setup_input();
-    pipeline_builder->setup_vertex_shader("shaders/vertex.spv");
-    pipeline_builder->setup_fragment_shader("shaders/fragment.spv");
-    pipeline_builder->setup_layout();
-
-    pipeline_builder->build_pipeline(graphics_pipeline, pipeline_layout);
-    logger::log(LStatus::INFO, "created graphics pipeline and its pipeline layout");
 }
 
 
@@ -313,7 +261,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
 
     vkCmdBeginRenderPass(command_buf, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     
-    vkCmdBindPipeline(command_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+    vkCmdBindPipeline(command_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_manager->get_pipeline("trivial"));
     
     vkCmdSetViewportWithCount(command_buf, 1, &viewport);
 

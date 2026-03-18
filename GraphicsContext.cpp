@@ -49,8 +49,8 @@ GraphicsContext::~GraphicsContext() {
 void GraphicsContext::create_instance(
     const std::vector<const char*>& validation_layers,
     const std::vector<const char*>& extensions) {
-    
-    logger::log(LStatus::INFO, "requested extendtions: ", extensions);
+
+    logger::log(LStatus::INFO, "requested extentions: ", extensions);
 
     VkApplicationInfo app_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
