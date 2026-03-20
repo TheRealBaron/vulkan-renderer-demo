@@ -1,4 +1,4 @@
-build
+build*
 CMakePresets.json
 utils
 docs

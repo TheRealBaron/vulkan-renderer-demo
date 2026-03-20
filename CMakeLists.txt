@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package(Vulkan REQUIRED)
+find_package(VulkanMemoryAllocator REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
@@ -51,18 +52,18 @@ function(compile_shaders TARGET_NAME)
             foreach(SHADER_FILE ${FILES})
                 get_filename_component(SHADER_NAME ${SHADER_FILE} NAME_WE)
 
-                set(OUTPUT_SPV  "${CMAKE_BINARY_DIR}/$<CONFIG>/shaders/${SHADER_NAME}.spv")
+                set(OUTPUT_SPV  "${CMAKE_BINARY_DIR}/shaders/${SHADER_NAME}.spv")
                 set(SOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/${SHADER_FILE}")
 
                 add_custom_command(
                     OUTPUT ${OUTPUT_SPV}
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/$<CONFIG>/shaders"
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/shaders"
                     COMMAND Vulkan::glslc 
                         -fshader-stage=${SHADER_STAGE}
                         "${SOURCE_FILE}"
                         -o "${OUTPUT_SPV}"
                     DEPENDS "${SOURCE_FILE}"
-                    COMMENT "Compiling vertex shader: ${SHADER_NAME}.spv"
+                    COMMENT "Compiling ${SHADER_STAGE} shader: ${SHADER_NAME}.spv"
                     VERBATIM
                 )
                 list(APPEND ALL_OUTPUT_SPV ${OUTPUT_SPV})
@@ -102,6 +103,7 @@ target_link_libraries(vkhello
         Vulkan::Vulkan
         glfw
         glm::glm
+        GPUOpen::VulkanMemoryAllocator
 )
 
 

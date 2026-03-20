@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <memory>
 
-#define GLFW_INCLUDE_VULKAN
 
 #include "UtilObjects.hpp"
 #include "GraphicsContext.hpp"
