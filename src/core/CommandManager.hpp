@@ -1,5 +1,5 @@
 #pragma once
-#include "GraphicsContext.hpp"
+#include "core/GraphicsContext.hpp"
 
 
 class CommandManager {

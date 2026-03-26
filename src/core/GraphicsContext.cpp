@@ -1,6 +1,6 @@
-#include "GraphicsContext.hpp"
-#include "UtilObjects.hpp"
-#include "logger.hpp"
+#include "core/GraphicsContext.hpp"
+#include "utils/UtilObjects.hpp"
+#include "utils/logger.hpp"
 
 
 GraphicsContext::GraphicsContext() :

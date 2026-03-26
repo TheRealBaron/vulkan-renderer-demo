@@ -1,4 +1,4 @@
-#include "FrameManager.hpp"
+#include "core/FrameManager.hpp"
 
 
 FrameManager::FrameManager(GraphicsContext *const gc_ptr, CommandManager *const cmd_mg, uint32_t max_frames_in_flight)

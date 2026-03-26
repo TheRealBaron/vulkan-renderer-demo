@@ -1,5 +1,5 @@
-#include "PipelineBuilder.hpp"
-#include "vertex_data.h"
+#include "core/PipelineBuilder.hpp"
+#include "resources/vertex_data.h"
 
 
 PipelineBuilder::PipelineBuilder(GraphicsContext *const gcptr, Swapchain *const sc) 

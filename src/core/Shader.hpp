@@ -1,6 +1,6 @@
 #pragma once
 #include <filesystem>
-#include "GraphicsContext.hpp"
+#include "core/GraphicsContext.hpp"
 
 
 enum class ShaderType {

@@ -4,15 +4,15 @@
 #include <memory>
 
 
-#include "UtilObjects.hpp"
-#include "GraphicsContext.hpp"
-#include "Swapchain.hpp"
-#include "PipelineManager.hpp"
-#include "FrameManager.hpp"
+#include "utils/UtilObjects.hpp"
+#include "core/GraphicsContext.hpp"
+#include "core/Swapchain.hpp"
+#include "core/PipelineManager.hpp"
+#include "core/FrameManager.hpp"
 
 #include "myapp.h"
-#include "logger.hpp"
-#include "vertex_data.h"
+#include "utils/logger.hpp"
+#include "resources/vertex_data.h"
 
 
 // common objects

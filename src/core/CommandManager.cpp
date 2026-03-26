@@ -1,4 +1,4 @@
-#include "CommandManager.hpp"
+#include "core/CommandManager.hpp"
 
 CommandManager::CommandManager(GraphicsContext *const gcptr) : gc_ptr(gcptr) {
     

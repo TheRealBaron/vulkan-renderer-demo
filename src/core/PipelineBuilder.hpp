@@ -1,7 +1,7 @@
 #pragma once
-#include "GraphicsContext.hpp"
-#include "Swapchain.hpp"
-#include "Shader.hpp"
+#include "core/GraphicsContext.hpp"
+#include "core/Swapchain.hpp"
+#include "core/Shader.hpp"
 
 
 class PipelineBuilder {

@@ -1,6 +1,6 @@
 #pragma once
-#include "GraphicsContext.hpp"
-#include "CommandManager.hpp"
+#include "core/GraphicsContext.hpp"
+#include "core/CommandManager.hpp"
 
 
 

@@ -1,8 +1,8 @@
 #include <algorithm>
 
-#include "Swapchain.hpp"
-#include "UtilObjects.hpp"
-#include "logger.hpp"
+#include "core/Swapchain.hpp"
+#include "utils/UtilObjects.hpp"
+#include "utils/logger.hpp"
 
 
 Swapchain::Swapchain(GraphicsContext *const ptr, GLFWwindow *const window) : gc_ptr(ptr) {
