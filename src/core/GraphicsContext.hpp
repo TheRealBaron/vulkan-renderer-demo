@@ -5,7 +5,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
 #include "vulkan/vulkan.hpp"
-
+#include "vk_mem_alloc.h"
 
 class GraphicsContext {
 public:
@@ -25,6 +25,7 @@ public:
     VkPhysicalDevice get_physical_device() { return physical_device; }
     VkDevice get_device() { return device; }
     VkSurfaceKHR get_surface() { return surface; }
+    VmaAllocator get_allocator() { return allocator; }
     VkQueue get_graphics_queue() { return graphics_queue; }
     VkQueue get_present_queue() { return present_queue; }
     VkQueue get_transfer_queue() { return transfer_queue; }
@@ -40,10 +41,10 @@ private:
     VkQueue graphics_queue;
     VkQueue present_queue;
     VkQueue transfer_queue;
+    VmaAllocator allocator;
     uint32_t graphics_family;
     uint32_t present_family;
     uint32_t transfer_family;
-    //TODO: add GPU memory allocation infrastructure
 
     void create_instance(
         const std::vector<const char*>& validation_layers,
@@ -57,6 +58,8 @@ private:
     void create_surface(GLFWwindow *const window);
     
     void create_device(const std::vector<const char*>& req_gpu_extentions);
+
+    void create_allocator();
 };
 
 

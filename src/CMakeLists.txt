@@ -73,12 +73,13 @@ add_executable(vkhello
     myapp.cpp
     core/GraphicsContext.cpp
     core/Swapchain.cpp
-    utils/UtilObjects.cpp
     core/Shader.cpp
     core/PipelineBuilder.cpp
     core/PipelineManager.cpp
     core/CommandManager.cpp
     core/FrameManager.cpp
+    resources/ReadonlyBuffer.cpp
+    utils/UtilObjects.cpp
 )
 
 target_include_directories(vkhello PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,3 +1,4 @@
+#define VMA_IMPLEMENTATION
 #include "core/GraphicsContext.hpp"
 #include "utils/UtilObjects.hpp"
 #include "utils/logger.hpp"
@@ -38,13 +39,17 @@ GraphicsContext::GraphicsContext(
     find_physical_device();
 
     create_device(req_gpu_extentions); 
+
+    create_allocator();
 }
 
 GraphicsContext::~GraphicsContext() {
+    vmaDestroyAllocator(allocator);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
 }
+
 
 void GraphicsContext::create_instance(
     const std::vector<const char*>& validation_layers,
@@ -226,5 +231,19 @@ void GraphicsContext::create_device(const std::vector<const char*>& req_gpu_exte
     vkGetDeviceQueue(device, *qindices.transfer_family, 0, &transfer_queue);
     
     logger::log(LStatus::INFO, "successfully created logical device");
+}
+
+void GraphicsContext::create_allocator() {
+
+    VmaAllocatorCreateInfo allocator_ci = {
+        .physicalDevice = physical_device,
+        .device = device,
+        .instance = instance
+    };
+    if (vmaCreateAllocator(&allocator_ci, &allocator) != VK_SUCCESS) {
+        throw std::runtime_error("could not create allocator");
+    }
+    
+
 }
 

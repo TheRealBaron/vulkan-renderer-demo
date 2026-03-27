@@ -13,6 +13,7 @@
 #include "myapp.h"
 #include "utils/logger.hpp"
 #include "resources/vertex_data.h"
+#include "resources/ReadonlyBuffer.hpp"
 
 
 // common objects
@@ -22,25 +23,8 @@ std::unique_ptr<Swapchain> swapchain;
 std::unique_ptr<PipelineManager> pipeline_manager;
 std::unique_ptr<CommandManager> command_manager;
 std::unique_ptr<FrameManager> frame_manager;
-
-//unmutable data
-VkBuffer vertex_buffer;
-VkDeviceMemory vertex_buffer_memory;
-VkBuffer index_buffer;
-VkDeviceMemory index_buffer_memory;
-
-void create_buffer(
-    VkDeviceSize size,
-    VkBufferUsageFlags usage,
-    VkMemoryPropertyFlags properties,
-    VkBuffer& buffer,
-    VkDeviceMemory& buffer_memory
-);
-
-void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
-void create_vertex_buffer();
-void create_index_buffer();
-uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
+std::unique_ptr<ReadonlyBuffer> vertex_buffer;
+std::unique_ptr<ReadonlyBuffer> index_buffer;
 
 
 void draw_frame();
@@ -103,9 +87,21 @@ static void myapp::initVulkan() {
         swapchain->get_images_cnt()
     );
     
-    create_vertex_buffer();
+
+    vertex_buffer = std::make_unique<ReadonlyBuffer> (graphics_context.get(), command_manager.get());
+    index_buffer = std::make_unique<ReadonlyBuffer> (graphics_context.get(), command_manager.get());
     
-    create_index_buffer();
+    vertex_buffer->load(
+        static_cast<void const*>(vertices.data()),
+        vertices.size() * sizeof(Vertex),
+        ReadonlyBuffer::Usage::VERTEX
+    );
+    index_buffer->load(
+        static_cast<void const*>(indices.data()),
+        indices.size() * sizeof(uint32_t),
+        ReadonlyBuffer::Usage::INDEX
+    );
+
 
     glfwShowWindow(window);
     glfwMakeContextCurrent(window);
@@ -124,17 +120,13 @@ static void myapp::cleanup() {
     VkDevice mydevice = graphics_context->get_device();
     vkDeviceWaitIdle(mydevice);
     
-    vkFreeMemory(mydevice, index_buffer_memory, nullptr);
-    vkDestroyBuffer(mydevice, index_buffer, nullptr);
 
-    vkFreeMemory(mydevice, vertex_buffer_memory, nullptr);
-    vkDestroyBuffer(mydevice, vertex_buffer, nullptr);
+    index_buffer->unload();
+    vertex_buffer->unload();
 
     glfwDestroyWindow(window);
     glfwTerminate();
 }
-
-
 
 
 void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
@@ -179,7 +171,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
         .extent = swapchain_extent
     };
 
-    VkBuffer vertex_bufs[] = {vertex_buffer};
+    VkBuffer vertex_bufs[] = {vertex_buffer->get_h()};
     VkDeviceSize offsets[] = {0};
     
     if (vkBeginCommandBuffer(command_buf, &begin_info) != VK_SUCCESS) {
@@ -196,7 +188,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
 
     vkCmdBindVertexBuffers(command_buf, 0, 1, vertex_bufs, offsets);
     
-    vkCmdBindIndexBuffer(command_buf, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(command_buf, index_buffer->get_h(), 0, VK_INDEX_TYPE_UINT32);
     
     vkCmdDrawIndexed(command_buf, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     
@@ -261,190 +253,6 @@ void draw_frame() {
     }
 
     frame_manager->increment_cur_image();
-}
-
-
-uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) {
-    VkPhysicalDeviceMemoryProperties mem_props;
-    vkGetPhysicalDeviceMemoryProperties(graphics_context->get_physical_device(), &mem_props);
-
-    for (uint32_t i = 0; i < mem_props.memoryTypeCount; ++i) {
-        VkMemoryPropertyFlags propflags = mem_props.memoryTypes[i].propertyFlags;
-        if ((type_filter & (1u << i)) && (propflags & properties) == properties) {
-            return i;
-        }
-    }
-   
-
-    throw std::runtime_error("could not find suitable memory type");
-}
-
-void create_buffer(
-    VkDeviceSize size,
-    VkBufferUsageFlags usage,
-    VkMemoryPropertyFlags properties,
-    VkBuffer& buffer,
-    VkDeviceMemory& buffer_memory) {
-
-    
-    VkBufferCreateInfo buf_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = size,
-        .usage = usage,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-   
-    if (vkCreateBuffer(graphics_context->get_device(), &buf_info, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create vertex buffer");
-    }
-
-    VkMemoryRequirements reqs;
-    vkGetBufferMemoryRequirements(graphics_context->get_device(), buffer, &reqs);
-
-    VkMemoryAllocateInfo alloc_info = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = reqs.size,
-        .memoryTypeIndex = find_memory_type(reqs.memoryTypeBits, properties)
-    };
-
-    if (vkAllocateMemory(graphics_context->get_device(), &alloc_info, nullptr, &buffer_memory) != VK_SUCCESS) {
-        throw std::runtime_error("could not allocate gpu memory");
-    }
-
-    vkBindBufferMemory(graphics_context->get_device(), buffer, buffer_memory, 0);
-}
-
-
-void copy_buffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
-    VkDevice mydevice = graphics_context->get_device();
-    VkCommandPool cmdpool;
-    VkCommandBuffer cmdbuffer;
-
-    VkCommandPoolCreateInfo pool_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = graphics_context->get_transfer_family_index()
-    };
-
-
-    VkCommandBufferBeginInfo begin_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-
-    VkBufferCopy copy_region = {
-        .srcOffset = 0,
-        .dstOffset = 0,
-        .size = size
-    };
-
-    VkSubmitInfo submit_info = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &cmdbuffer
-    };
-   
-    if (vkCreateCommandPool(mydevice, &pool_info, nullptr, &cmdpool) != VK_SUCCESS) {
-        throw std::runtime_error("could not create command pool");
-    } 
-
-    VkCommandBufferAllocateInfo alloc_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = cmdpool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1
-    };
-    if (vkAllocateCommandBuffers(mydevice, &alloc_info, &cmdbuffer) != VK_SUCCESS) {
-        throw std::runtime_error("could not create temporary command buffer for copying");
-    }
-
-    if (vkBeginCommandBuffer(cmdbuffer, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("could not start recording copy commands");
-    }
-
-    vkCmdCopyBuffer(cmdbuffer, src, dst, 1, &copy_region);
-    vkEndCommandBuffer(cmdbuffer);
-
-    vkQueueSubmit(graphics_context->get_transfer_queue(), 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphics_context->get_transfer_queue());
-
-    vkFreeCommandBuffers(mydevice, cmdpool, 1, &cmdbuffer);
-    vkDestroyCommandPool(mydevice, cmdpool, nullptr);
-}
-
-
-void create_vertex_buffer() {
-    VkDevice mydevice = graphics_context->get_device();
-    VkDeviceSize bufsize = sizeof(vertices[0]) * vertices.size();
-    VkBuffer tmp_buf;
-    VkDeviceMemory tmp_buf_memory;
-    
-    create_buffer(
-        bufsize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        tmp_buf,
-        tmp_buf_memory 
-    );
-
-    create_buffer(
-        bufsize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        vertex_buffer,
-        vertex_buffer_memory
-    );
-
-
-    void* data;
-    if (vkMapMemory(mydevice, tmp_buf_memory, 0, bufsize, 0, &data) != VK_SUCCESS) {
-        throw std::runtime_error("could not map gpu memory to virtual adress space");
-    }
-    memcpy(data, vertices.data(), bufsize);
-    vkUnmapMemory(mydevice, tmp_buf_memory);
-
-    copy_buffer(tmp_buf, vertex_buffer, bufsize);
-
-    logger::log(LStatus::INFO, "loaded vertex data to gpu");
-    vkFreeMemory(mydevice, tmp_buf_memory, nullptr);
-    vkDestroyBuffer(mydevice, tmp_buf, nullptr);
-}
-
-
-void create_index_buffer() {
-    VkDevice mydevice = graphics_context->get_device();
-    VkDeviceSize bufsize = sizeof(indices[0]) * indices.size();
-    VkBuffer tmp_buf;
-    VkDeviceMemory tmp_buf_memory;
-    
-    create_buffer(
-        bufsize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        tmp_buf,
-        tmp_buf_memory 
-    );
-    
-    create_buffer(
-        bufsize,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        index_buffer,
-        index_buffer_memory 
-    );
-
-    void* data;
-    if (vkMapMemory(mydevice, tmp_buf_memory, 0, bufsize, 0, &data) != VK_SUCCESS) {
-        throw std::runtime_error("could not map gpu memory to virtual adress space");
-    }
-    memcpy(data, indices.data(), bufsize);
-    vkUnmapMemory(mydevice, tmp_buf_memory);
-
-    copy_buffer(tmp_buf, index_buffer, bufsize);
-    
-    logger::log(LStatus::INFO, "loaded index data to gpu");
-    vkFreeMemory(mydevice, tmp_buf_memory, nullptr);
-    vkDestroyBuffer(mydevice, tmp_buf, nullptr);
 }
 
 
