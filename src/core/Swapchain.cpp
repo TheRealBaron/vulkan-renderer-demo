@@ -5,7 +5,7 @@
 #include "utils/logger.hpp"
 
 
-Swapchain::Swapchain(GraphicsContext *const ptr, GLFWwindow *const window) : gc_ptr(ptr) {
+Swapchain::Swapchain(GraphicsContext *const ptr, GLFWwindow *const window) : gc_ptr(ptr), depth_buffer(ptr) {
     if (gc_ptr == nullptr) {
         throw std::runtime_error("could not create swapchain: the graphics context is invalid");
     }
@@ -19,6 +19,8 @@ Swapchain::Swapchain(GraphicsContext *const ptr, GLFWwindow *const window) : gc_
 
     create_image_views();
     logger::log(LStatus::INFO, "created image views");
+
+    depth_buffer.load(depth_format, extent);
 
     create_render_pass();
     logger::log(LStatus::INFO, "created render pass");
@@ -45,6 +47,8 @@ Swapchain::~Swapchain() {
     }
 
     vkDestroyRenderPass(mydevice, render_pass, nullptr);
+    
+    depth_buffer.unload();
 
     for (VkImageView& view : image_views) {
         vkDestroyImageView(mydevice, view, nullptr);
@@ -54,11 +58,9 @@ Swapchain::~Swapchain() {
 }
 
 
-void Swapchain::create_extent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window) {
-    if (capabilities.currentExtent.width != UINT32_MAX) {
-        extent = capabilities.currentExtent;
-        return;
-    }
+void Swapchain::setup_extent_and_format(GLFWwindow* window) {
+
+    SwapChainSupportDetails support(gc_ptr->get_physical_device(), gc_ptr->get_surface());
 
     int32_t width, height;
     glfwGetFramebufferSize(window, &width, &height);
@@ -70,15 +72,35 @@ void Swapchain::create_extent(const VkSurfaceCapabilitiesKHR& capabilities, GLFW
 
     extent.width = std::clamp(
         extent.width, 
-        capabilities.minImageExtent.width,
-        capabilities.maxImageExtent.width
+        support.capabilities.minImageExtent.width,
+        support.capabilities.maxImageExtent.width
     );
 
     extent.height = std::clamp(
         extent.height, 
-        capabilities.minImageExtent.height,
-        capabilities.maxImageExtent.height
+        support.capabilities.minImageExtent.height,
+        support.capabilities.maxImageExtent.height
     );
+
+    depth_format = VK_FORMAT_UNDEFINED;
+    std::array<VkFormat, 2> formats = { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+    for (VkFormat candidate : formats) {
+        VkFormatProperties2 format_properties = { 
+            .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 
+        };
+        vkGetPhysicalDeviceFormatProperties2(
+            gc_ptr->get_physical_device(), candidate, &format_properties
+        );
+        if (format_properties.formatProperties.optimalTilingFeatures & 
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            depth_format = candidate;
+            break;
+        }
+    }
+    if (depth_format == VK_FORMAT_UNDEFINED) {
+        throw std::runtime_error("could not find supported depth format");
+    }
+    color_format = VK_FORMAT_B8G8R8A8_SRGB;
 }
 
 
@@ -88,8 +110,7 @@ void Swapchain::create_swapchain(GLFWwindow *const window) {
     VkSurfaceKHR mysurface = gc_ptr->get_surface();
     SwapChainSupportDetails swapchain_support(myphysdevice, mysurface);
     
-    create_extent(swapchain_support.capabilities, window);
-    format = VK_FORMAT_B8G8R8A8_SRGB;
+    setup_extent_and_format(window);
     
     uint32_t image_cnt = swapchain_support.capabilities.minImageCount + 1;
     if (swapchain_support.capabilities.maxImageCount) {
@@ -105,7 +126,7 @@ void Swapchain::create_swapchain(GLFWwindow *const window) {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = mysurface,
         .minImageCount = image_cnt,
-        .imageFormat = VK_FORMAT_B8G8R8A8_SRGB,
+        .imageFormat = color_format,
         .imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
         .imageExtent = extent,
         .imageArrayLayers = 1,
@@ -141,7 +162,7 @@ void Swapchain::create_image_views() {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = VK_NULL_HANDLE,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = format,
+        .format = color_format,
         .components = {
             .r = VK_COMPONENT_SWIZZLE_IDENTITY,
             .g = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -167,44 +188,66 @@ void Swapchain::create_image_views() {
 }
 
 
+
 void Swapchain::create_render_pass() {
     VkDevice mydevice = gc_ptr->get_device();
     
-    VkAttachmentDescription color_attachment = {
-        .format  = format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    std::array<VkAttachmentDescription, 2> attachment_descs = {
+        VkAttachmentDescription {
+            .format  = color_format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        },
+        VkAttachmentDescription {
+            .format  = depth_format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        }
     };
 
-
-    VkAttachmentReference color_attachment_ref = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    std::array<VkAttachmentReference, 2> refs = {
+        VkAttachmentReference {
+            .attachment = 0,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        },
+        VkAttachmentReference {
+            .attachment = 1,
+            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        }
     };
-
+    
     VkSubpassDescription subpass = {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment_ref
+        .pColorAttachments = &refs[0],
     };
+
 
     VkSubpassDependency dependency = {
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | 
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | 
+                        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
         .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | 
+                         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
     };
 
 
-    VkRenderPassCreateInfo render_pass_info = {
+    VkRenderPassCreateInfo render_pass_ci = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &color_attachment,
+        .attachmentCount = 2,
+        .pAttachments = attachment_descs.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
         .dependencyCount = 1,
@@ -212,7 +255,7 @@ void Swapchain::create_render_pass() {
     };
     
 
-    if (vkCreateRenderPass(mydevice, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) {
+    if (vkCreateRenderPass(mydevice, &render_pass_ci, nullptr, &render_pass) != VK_SUCCESS) {
         throw std::runtime_error("could not create render pass");
     }
 }
@@ -221,13 +264,17 @@ void Swapchain::create_render_pass() {
 void Swapchain::create_framebuffers() {
     VkDevice mydevice = gc_ptr->get_device();
     framebuffers.resize(images.size());
-    
+
+    std::array<VkImageView, 2> attachments;
+    attachments[1] = depth_buffer.get_view();
+
     for (size_t i = 0; i < framebuffers.size(); ++i) {
+        attachments[0] = image_views[i];
         VkFramebufferCreateInfo fb_info = {
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .renderPass = render_pass,
-            .attachmentCount = 1,
-            .pAttachments = &image_views[i],
+            .attachmentCount = 2,
+            .pAttachments = attachments.data(),
             .width = extent.width,
             .height = extent.height,
             .layers = 1
@@ -238,7 +285,6 @@ void Swapchain::create_framebuffers() {
         }
     }
 }
-
 
 void Swapchain::create_semaphores() {
     render_finished.resize(get_images_cnt());

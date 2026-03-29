@@ -131,7 +131,9 @@ static void myapp::cleanup() {
 
 void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
     
-    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    std::array<VkClearValue, 2> clear_values{};
+    clear_values[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clear_values[1].depthStencil = {1.0f, 0};
     
     VkFramebuffer cur_framebuffer = swapchain->get_framebuffer(im_index);
     VkExtent2D swapchain_extent = swapchain->get_extent();
@@ -153,8 +155,8 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t im_index) {
             },
             .extent = swapchain_extent
         },
-        .clearValueCount = 1,
-        .pClearValues = &clear_color
+        .clearValueCount = 2,
+        .pClearValues = clear_values.data()
     };
     
     VkViewport viewport = {

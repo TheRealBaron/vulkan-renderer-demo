@@ -67,7 +67,16 @@ void PipelineBuilder::clear_and_setup_defaults() {
         .alphaToCoverageEnable = VK_FALSE,
         .alphaToOneEnable = VK_FALSE
     }; 
-
+    
+    depth_stencil_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable = VK_TRUE,
+        .depthWriteEnable = VK_TRUE,
+        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable = VK_FALSE
+    };
+    
     fragment_shader.reset(nullptr);
 
     color_blend_attachment = {
@@ -147,7 +156,7 @@ void PipelineBuilder::build_pipeline(VkPipeline& pipeline, VkPipelineLayout& pip
         .pViewportState = &viewport_scissor,
         .pRasterizationState = &rasterizer,
         .pMultisampleState = &multisampling,
-        .pDepthStencilState = nullptr,
+        .pDepthStencilState = &depth_stencil_state,
         .pColorBlendState = &color_blend_state,
         .pDynamicState = &unfixed_states,
         .layout = pipeline_layout,

@@ -33,6 +33,7 @@ private:
     VkPipelineViewportStateCreateInfo viewport_scissor;
     VkPipelineRasterizationStateCreateInfo rasterizer;
     VkPipelineMultisampleStateCreateInfo multisampling;
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_state;
     std::unique_ptr<Shader> fragment_shader; // customizable
     VkPipelineColorBlendAttachmentState color_blend_attachment;
     VkPipelineColorBlendStateCreateInfo color_blend_state;

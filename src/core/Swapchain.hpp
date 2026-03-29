@@ -1,5 +1,6 @@
 #pragma once
 #include "core/GraphicsContext.hpp"
+#include "resources/DepthBuffer.hpp"
 
 
 class Swapchain {
@@ -8,7 +9,7 @@ public:
     ~Swapchain();
 
     inline uint32_t get_images_cnt() { return static_cast<uint32_t>(images.size()); }
-    inline VkSwapchainKHR get_swapchain() { return this->swapchain; }
+    inline VkSwapchainKHR get_swapchain() { return swapchain; }
     inline VkExtent2D get_extent() { return extent; }
     inline VkRenderPass get_render_pass() { return render_pass; }
     inline VkImageView get_image_view(uint32_t i) { return image_views[i]; }
@@ -22,15 +23,17 @@ private:
     GraphicsContext *const gc_ptr;
 
     VkSwapchainKHR swapchain;
-    VkFormat format;
+    VkFormat color_format;
+    VkFormat depth_format;
     VkExtent2D extent;
     VkRenderPass render_pass;
+    DepthBuffer depth_buffer;
     std::vector<VkImage> images;
     std::vector<VkImageView> image_views;
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkSemaphore> render_finished;
 
-    void create_extent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
+    void setup_extent_and_format(GLFWwindow* window);
     void create_swapchain(GLFWwindow *const window);
     void extract_images();
     void create_image_views();
