@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include "core/GraphicsContext.hpp"
 #include "core/Swapchain.hpp"
 #include "core/Shader.hpp"
@@ -12,7 +13,13 @@ public:
     void setup_input();
     void setup_vertex_shader(const std::filesystem::path& path);
     void setup_fragment_shader(const std::filesystem::path& path);
-    void setup_layout();
+
+    template <std::ranges::input_range R>
+    inline void setup_layout(R&& r) {
+        descriptor_set_layouts.assign(
+            r.begin(), r.end()
+        );
+    }
 
     
 private:
@@ -37,8 +44,7 @@ private:
     std::unique_ptr<Shader> fragment_shader; // customizable
     VkPipelineColorBlendAttachmentState color_blend_attachment;
     VkPipelineColorBlendStateCreateInfo color_blend_state;
-    VkPipelineLayoutCreateInfo pipeline_layout_info; //customizable
-
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts; //customizable
 
     friend class PipelineManager;
 };

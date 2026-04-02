@@ -16,6 +16,7 @@ public:
     void add_pipeline(const std::string_view name, PipelineBuilder& bld);
     
     VkPipeline get_pipeline(const std::string_view name);
+    VkPipelineLayout get_pipeline_layout(const std::string_view name);
 
 private:
     VkDevice device;

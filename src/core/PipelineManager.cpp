@@ -27,3 +27,7 @@ VkPipeline PipelineManager::get_pipeline(const std::string_view name) {
     return pipelines[name].inst;
 }
 
+VkPipelineLayout PipelineManager::get_pipeline_layout(const std::string_view name) {
+    return pipelines[name].layout;
+}
+

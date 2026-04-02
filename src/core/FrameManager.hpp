@@ -8,7 +8,9 @@ class FrameManager {
 public:
     FrameManager(GraphicsContext *const gc_ptr, CommandManager *const cmd_mg, uint32_t max_frames_in_flight);
     ~FrameManager();
-    
+
+    inline uint32_t get_cur_index() { return current_index; }
+
     inline VkCommandBuffer get_current_cmdbuf() {
         return frames[current_index].cmd_buf;
     }

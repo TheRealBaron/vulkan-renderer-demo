@@ -14,16 +14,13 @@ void PipelineBuilder::clear_and_setup_defaults() {
         VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
         VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT
     };
+
     unfixed_states = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .dynamicStateCount = static_cast<uint32_t>(dynamic_states.size()),
         .pDynamicStates = dynamic_states.data()
     };
 
-    pipeline_layout_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-    };
-    
     input = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
     };
@@ -102,6 +99,8 @@ void PipelineBuilder::clear_and_setup_defaults() {
         .pAttachments = &color_blend_attachment,
         .blendConstants = { 0.f, 0.f, 0.f, 0.f }
     };
+
+    descriptor_set_layouts.clear();
 }
 
 
@@ -125,20 +124,18 @@ void PipelineBuilder::setup_fragment_shader(const std::filesystem::path& path) {
     fragment_shader = std::make_unique<Shader>(gc_ptr, path, ShaderType::FRAGMENT);
 }
 
-void PipelineBuilder::setup_layout() {
-    pipeline_layout_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 0,
-        .pSetLayouts = nullptr,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = nullptr
-    };
-}
-
 void PipelineBuilder::build_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout) {
     VkDevice mydevice = gc_ptr->get_device();
     
-    if (vkCreatePipelineLayout(mydevice, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
+    VkPipelineLayoutCreateInfo pipeline_layout_ci = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = static_cast<uint32_t>(descriptor_set_layouts.size()),
+        .pSetLayouts = descriptor_set_layouts.data(),
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = nullptr
+    };
+
+    if (vkCreatePipelineLayout(mydevice, &pipeline_layout_ci, nullptr, &pipeline_layout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout");
     }
 

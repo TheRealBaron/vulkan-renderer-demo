@@ -80,6 +80,7 @@ add_executable(vkhello
     core/FrameManager.cpp
     resources/ReadonlyBuffer.cpp
     resources/DepthBuffer.cpp
+    resources/UniformBuffer.cpp
     utils/UtilObjects.cpp
 )
 
