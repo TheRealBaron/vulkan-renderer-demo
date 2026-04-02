@@ -82,6 +82,7 @@ add_executable(vkhello
     resources/DepthBuffer.cpp
     resources/UniformBuffer.cpp
     utils/UtilObjects.cpp
+    animations/animation.cpp
 )
 
 target_include_directories(vkhello PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

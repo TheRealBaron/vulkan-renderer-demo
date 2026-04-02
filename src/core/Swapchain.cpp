@@ -228,6 +228,7 @@ void Swapchain::create_render_pass() {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = 1,
         .pColorAttachments = &refs[0],
+        .pDepthStencilAttachment = &refs[1]
     };
 
 

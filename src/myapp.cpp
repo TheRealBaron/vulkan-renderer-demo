@@ -15,6 +15,7 @@
 #include "resources/vertex_data.h"
 #include "resources/ReadonlyBuffer.hpp"
 #include "resources/UniformBuffer.hpp"
+#include "animations/animation.hpp"
 
 
 // common objects
@@ -102,12 +103,13 @@ static void myapp::initVulkan() {
     transform_buffer = std::make_unique<TransformBuffer>(graphics_context.get(), swapchain->get_images_cnt());
     
     vertex_buffer->load(
-        static_cast<void const*>(vertices.data()),
-        vertices.size() * sizeof(Vertex),
+        static_cast<void const*>(verticies),
+        sizeof(verticies),
         ReadonlyBuffer::Usage::VERTEX
     );
     index_buffer->load(
-        static_cast<void const*>(indices.data()), indices.size() * sizeof(uint32_t),
+        static_cast<void const*>(indicies), 
+        sizeof(indicies),
         ReadonlyBuffer::Usage::INDEX
     );
 
@@ -229,7 +231,7 @@ void record_command_buffer(VkCommandBuffer command_buf, uint32_t cur_index, uint
         pipeline_layout, 0, 1, &descriptor_sets[cur_index], 0, nullptr
     );
     
-    vkCmdDrawIndexed(command_buf, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    vkCmdDrawIndexed(command_buf, static_cast<uint32_t>(sizeof(indicies) / sizeof(int)), 1, 0, 0, 0);
     
     vkCmdEndRenderPass(command_buf);
 
@@ -303,12 +305,15 @@ void create_descriptor_set_layout(VkDevice device) {
         VkDescriptorSetLayoutBinding {
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+
         },
         VkDescriptorSetLayoutBinding {
             .binding = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .descriptorCount = 1
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
         }
     };
     VkDescriptorSetLayoutCreateInfo desc_layout_ci = {
@@ -362,21 +367,63 @@ void create_descriptor_sets(size_t cnt, VkDevice device) {
             VkWriteDescriptorSet {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .dstSet = descriptor_sets[i],
+                .dstBinding = 0,
                 .descriptorCount = 1,
-                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &camera_info
+            },
+            VkWriteDescriptorSet {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = descriptor_sets[i],
+                .dstBinding = 1,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &transform_info
             }
         };
-        write_info[0].dstBinding = 0;
-        write_info[0].pBufferInfo= &camera_info;
 
-        write_info[1].dstBinding = 1;
-        write_info[1].pBufferInfo = &transform_info;
-    } 
+        vkUpdateDescriptorSets(
+            graphics_context->get_device(),
+            static_cast<uint32_t>(write_info.size()),
+            write_info.data(),
+            0,
+            nullptr
+        );
+    }
+    logger::log(LStatus::INFO, "updated descriptor sets");
+
+    float ang = glm::radians(15.f);
+    glm::vec3 cam_pos = glm::vec3(0.f, glm::sin(ang), glm::cos(ang)) * 6.f;
+    glm::vec3 target_pos = glm::vec3(0.f);
+    glm::vec3 world_up(0.f, 1.f, 0.f);
+
+    glm::mat4 proj = glm::perspectiveRH(
+        glm::radians(60.f),
+        (swapchain->get_extent().width + 0.0f) / swapchain->get_extent().height,
+        0.1f,
+        25.f
+    );
+    proj[1][1] *= -1.f;
+    for (size_t i = 0; i < cnt; ++i) {
+        camera_buffer->update(
+            CameraBuffer::Ubo { 
+                .view = glm::lookAtRH(cam_pos, target_pos, world_up), 
+                .proj = proj
+            }, 
+            i
+        );
+    }
 }
 
 
 void update(float t, uint32_t index) {
-    
-    
+    t = std::fmod(t, 16.5);
+    transform_buffer->update(
+        TransformBuffer::Ubo(
+            animate::drammaticMovement(t),
+            animate::drammaticRotation(t)
+        ),
+        index
+    );
 
 }

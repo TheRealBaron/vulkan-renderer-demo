@@ -7,7 +7,7 @@ int main(int argc, const char* argv[]) {
         myapp::run();
     } catch (const std::exception& e) {
         logger::log(LStatus::FATAL, "caught runtime error: {}", e.what());
-        return -1;
+        std::abort();
     }
 
     return 0;
