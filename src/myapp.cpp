@@ -4,11 +4,7 @@
 #include <memory>
 #include <chrono>
 
-#include "utils/UtilObjects.hpp"
-#include "core/GraphicsContext.hpp"
-#include "core/Swapchain.hpp"
-#include "core/PipelineManager.hpp"
-#include "core/FrameManager.hpp"
+#include "core/Renderer.hpp"
 
 #include "myapp.h"
 #include "utils/logger.hpp"
@@ -19,7 +15,9 @@
 
 
 // common objects
+
 GLFWwindow* window;
+std::unique_ptr<Renderer> renderer;
 std::unique_ptr<GraphicsContext> graphics_context;
 std::unique_ptr<Swapchain> swapchain;
 std::unique_ptr<PipelineManager> pipeline_manager;
@@ -46,9 +44,15 @@ void draw_frame();
 
 void myapp::run() {
     myapp::initWindow();
-    myapp::initVulkan();
-    myapp::mainloop();
-    myapp::cleanup();
+
+    renderer = std::make_unique<Renderer>(window);
+    logger::log(LStatus::INFO, "successfully initialized renderer");
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    //myapp::initVulkan();
+    //myapp::mainloop();
+    //myapp::cleanup();
 }
 
 
@@ -89,7 +93,6 @@ static void myapp::initVulkan() {
     );
 
 
-    
     command_manager = std::make_unique<CommandManager>(graphics_context.get());
     frame_manager = std::make_unique<FrameManager>(
         graphics_context.get(), 
@@ -107,6 +110,7 @@ static void myapp::initVulkan() {
         sizeof(verticies),
         ReadonlyBuffer::Usage::VERTEX
     );
+    
     index_buffer->load(
         static_cast<void const*>(indicies), 
         sizeof(indicies),

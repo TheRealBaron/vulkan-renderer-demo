@@ -28,11 +28,6 @@ vec3 vertColors[3] = {
 layout(location = 0) out vec3 outColor;
 
 void main() {
-    mat4 model = mesh_ubo.pos * mesh_ubo.rot;
-    gl_Position =
-        cam_ubo.proj *
-        cam_ubo.view *
-        model        *
-        vec4(pos, 1.0);
+    gl_Position = cam_ubo.proj * cam_ubo.view * mesh_ubo.pos * mesh_ubo.rot * vec4(pos, 1.0);
     outColor = vertColors[(gl_VertexIndex) % 3];
 }

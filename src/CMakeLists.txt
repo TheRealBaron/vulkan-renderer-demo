@@ -78,6 +78,7 @@ add_executable(vkhello
     core/PipelineManager.cpp
     core/CommandManager.cpp
     core/FrameManager.cpp
+    core/Renderer.cpp
     resources/ReadonlyBuffer.cpp
     resources/DepthBuffer.cpp
     resources/UniformBuffer.cpp
