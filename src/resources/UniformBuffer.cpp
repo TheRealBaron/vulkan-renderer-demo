@@ -77,4 +77,6 @@ VkDescriptorBufferInfo UniformBuffer<T>::get_desc_write(size_t i) {
 
 template class UniformBuffer<CamUbo>;
 template class UniformBuffer<MeshUbo>;
+template class UniformBuffer<LightingUbo>;
+
 

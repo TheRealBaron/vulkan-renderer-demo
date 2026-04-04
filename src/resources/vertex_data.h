@@ -8,6 +8,7 @@
 
 struct Vertex {
     glm::vec3 pos;
+    glm::vec3 norm;
 
     static VkVertexInputBindingDescription get_binding_description() {
         return {
@@ -17,13 +18,19 @@ struct Vertex {
         };
     }
 
-    static std::array<VkVertexInputAttributeDescription, 1> get_attribute_descriptions() {
-         std::array<VkVertexInputAttributeDescription, 1> res = {
+    static std::array<VkVertexInputAttributeDescription, 2> get_attribute_descriptions() {
+         std::array<VkVertexInputAttributeDescription, 2> res = {
             VkVertexInputAttributeDescription {
                 .location = 0,
                 .binding = 0,
                 .format = VK_FORMAT_R32G32B32_SFLOAT,
                 .offset = offsetof(Vertex, pos)
+            },
+            VkVertexInputAttributeDescription {
+                .location = 1,
+                .binding = 0,
+                .format = VK_FORMAT_R32G32B32_SFLOAT,
+                .offset = offsetof(Vertex, norm)
             }
         };
         return res;
@@ -31,22 +38,18 @@ struct Vertex {
 };
 
 
-const float a = (glm::sqrt(5.f) + 1.f) * 0.5f ;
+const float a = (glm::sqrt(5.f) + 1.f) * 0.5f;
 inline float verticies[] = {
-    a, 1., 0.,
-    a, -1., 0.,
-    -a, -1., 0.,
-    -a, 1., 0.,
+    -0.5f, -0.5f, 0.0f,     0.0f, 0.0f, 1.0f,
+     0.5f, -0.5f, 0.0f,     0.0f, 0.0f, 1.0f,
+     0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,
+    -0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f
+};
 
-    1., 0., a,
-    -1., 0., a,
-    -1., 0., -a,
-    1., 0., -a,
 
-    0., a, 1.,
-    0., a, -1.,
-    0., -a, -1.,
-    0., -a, 1
+inline uint32_t indicies[] = {
+    0, 1, 2,
+    0, 2, 3
 };
 
 // inline int indicies[]{
@@ -106,30 +109,30 @@ inline float verticies[] = {
 //     2, 6, 3,
 // };
 
-inline int indicies[]{
-    4, 5, 8,
-    4, 8, 0,
-    4, 0, 1,
-    4, 1, 11,
-    4, 11, 5,
-
-    5, 8, 3,
-    8, 0, 9,
-    0, 1, 7,
-    1, 11, 10,
-    11, 5, 2,
-
-    3, 9, 8,
-    9, 7, 0,
-    7, 10, 1,
-    10, 2, 11,
-    2, 3, 5,
-    
-    3, 9, 6,
-    9, 7, 6,
-    7, 10, 6,
-    10, 2, 6,
-    2, 3, 6,
-};
+// inline int indicies[] = {
+//    4, 5, 8,
+//    4, 8, 0,
+//    4, 0, 1,
+//    4, 1, 11,
+//    4, 11, 5,
+// 
+//    5, 8, 3,
+//    8, 0, 9,
+//    0, 1, 7,
+//    1, 11, 10,
+//    11, 5, 2,
+// 
+//    3, 9, 8,
+//    9, 7, 0,
+//    7, 10, 1,
+//    10, 2, 11,
+//    2, 3, 5,
+//    
+//    3, 9, 6,
+//    9, 7, 6,
+//    7, 10, 6,
+//    10, 2, 6,
+//    2, 3, 6,
+// };
 
 

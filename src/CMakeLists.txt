@@ -61,7 +61,7 @@ function(compile_shaders TARGET_NAME)
         endif() 
     endforeach()
 
-    message(STATUS "created commands for compiling shaders: ${ALL_OUTPUT_SPV}")
+    message(STATUS "created commands for compiling shaders")
 
     add_custom_target(compile_all_shaders ALL DEPENDS ${ALL_OUTPUT_SPV})
     add_dependencies(${TARGET_NAME} compile_all_shaders)
@@ -82,7 +82,11 @@ add_executable(vkhello
     resources/ReadonlyBuffer.cpp
     resources/DepthBuffer.cpp
     resources/UniformBuffer.cpp
+    scene/Camera.cpp
+    scene/Mesh.cpp
+    scene/Scene.cpp
     utils/UtilObjects.cpp
+    utils/Time.cpp
     animations/animation.cpp
 )
 
@@ -93,11 +97,11 @@ compile_shaders(vkhello
     VERTEX vertex.glsl
 )
 
-
 target_link_libraries(vkhello 
     PRIVATE 
         Vulkan::Vulkan
         glfw
         glm::glm
         GPUOpen::VulkanMemoryAllocator
+        tinyobjloader::tinyobjloader
 )

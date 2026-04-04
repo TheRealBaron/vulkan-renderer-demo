@@ -8,8 +8,11 @@ find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
+find_package(tinyobjloader REQUIRED)
 
 
+add_subdirectory(data)
 add_subdirectory(src)
+
 
 

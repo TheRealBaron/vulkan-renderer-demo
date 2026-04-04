@@ -13,7 +13,7 @@ float ex(float x) {
 }
 
 float angle(float x) {
-    return 0.5f * x - 0.5f * glm::exp(-4.f * (x + 0.25f)) + glm::exp(3.f * (x - 13.5f));
+    return 0.5f * x; // - 0.5f * glm::exp(-4.f * (x + 0.25f)) + glm::exp(3.f * (x - 13.5f));
 }
 
 float smoothMin(float a, float b, float k) {
@@ -38,7 +38,7 @@ glm::vec3 moveOutro(float t) {
 
 glm::mat4x4 animate::drammaticMovement(float time) {
     float withUpLimit = smoothMin(1.f, time * 2.f, 0.5f);
-    glm::vec3 pos = moveBeizer(withUpLimit) + moveUpDown(time) + moveOutro(time);
+    glm::vec3 pos = moveUpDown(time);
     return glm::translate(glm::mat4x4(1.f), pos);
 }
 

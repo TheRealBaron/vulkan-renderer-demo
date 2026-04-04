@@ -15,7 +15,7 @@ public:
     inline VkImageView get_image_view(uint32_t i) { return image_views[i]; }
     inline VkFramebuffer get_framebuffer(uint32_t i) { return framebuffers[i]; }
     inline VkSemaphore get_semaphore(uint32_t i) { return render_finished[i]; }
-
+    inline float get_aspect() { return (extent.width + 0.f) / extent.height; }
     uint32_t acquire_next_image(VkSemaphore sem);
     // TODO: add swapchain recreation 
     

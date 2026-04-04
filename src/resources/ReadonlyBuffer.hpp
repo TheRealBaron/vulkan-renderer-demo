@@ -14,8 +14,10 @@ public:
     void load(const void *const data, size_t size, Usage usage);
     void unload();
     inline VkBuffer get_h() { return buffer; }
+    inline uint32_t get_u32_cnt() { return bufsize / 4; }
 
 private:
+    uint32_t bufsize;
     GraphicsContext *const gc_ptr;
     CommandManager *const cmdmg_ptr;
     VmaAllocation allocation;

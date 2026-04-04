@@ -10,7 +10,7 @@ void ReadonlyBuffer::unload() {
 
 
 void ReadonlyBuffer::load(const void *const data, size_t size, Usage usage) {
-
+    bufsize = size;
     VmaAllocator allocator = gc_ptr->get_allocator();
     VkBuffer tmp_buf;
     VmaAllocation tmp_alloc;
