@@ -34,12 +34,12 @@ static void myapp::initWindow() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-
-    window = glfwCreateWindow(1840, 1035, "lighting model demo", nullptr, nullptr);
-    //window = glfwCreateWindow(mode->width, mode->height, "lighting model demo", monitor, nullptr);
+    window = glfwCreateWindow(mode->width, mode->height, "demo", nullptr, nullptr);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 }
 
@@ -50,6 +50,7 @@ static void myapp::initVulkan() {
     logger::log(LStatus::INFO, "successfully initialized renderer");
     
     scene = std::make_unique<Scene>(
+        window,
         renderer->get_context(),
         renderer->get_swapchain(),
         renderer->get_command_manager()

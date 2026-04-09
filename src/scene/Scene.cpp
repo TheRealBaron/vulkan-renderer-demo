@@ -2,13 +2,14 @@
 #include "animations/animation.hpp"
 
 
-Scene::Scene(GraphicsContext *const gc, Swapchain *const sc, CommandManager *const cmdmg) 
+Scene::Scene(GLFWwindow *const window, GraphicsContext *const gc, Swapchain *const sc, CommandManager *const cmdmg) 
     : gc(gc), sc(sc), cmdmg(cmdmg) {
 
     mesh = std::make_unique<Mesh>(gc, cmdmg, sc->get_images_cnt(), "data/monkey.obj");
-float ang = glm::radians(15.f);
+    float ang = glm::radians(15.f);
     
     camera = std::make_unique<Camera>(
+        window,
         gc, 
         sc->get_images_cnt(),
         glm::vec3(0.f, glm::sin(ang), -glm::cos(ang)) * 5.f,
@@ -181,7 +182,9 @@ void Scene::update(float t, size_t buf_i) {
         },
         buf_i
     );
-
+    camera->update_t(t);
+    camera->update(buf_i);
+    
 }
 
 

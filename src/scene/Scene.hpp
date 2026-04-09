@@ -10,7 +10,7 @@
 class Scene {
 public:
     
-    Scene(GraphicsContext *const gc, Swapchain *const sc, CommandManager *const cmdmg);
+    Scene(GLFWwindow *const window, GraphicsContext *const gc, Swapchain *const sc, CommandManager *const cmdmg);
     ~Scene();
     
     void configure_pipeline_builder(PipelineBuilder *const pipeline_builder);
