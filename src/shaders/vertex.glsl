@@ -28,13 +28,14 @@ layout(binding = 1) uniform TransformBuffer {
 // 	vec3(0.,0.,1.)
 // };
 
-layout(location = 0) out vec3 outColor;
-layout(location = 1) out vec3 pos_to_frag;
-layout(location = 2) out vec3 norm_to_frag;
+layout(location = 0) out vec3 pos_to_frag;
+layout(location = 1) out vec3 norm_to_frag;
 
 void main() {
-    gl_Position = cam_ubo.proj * cam_ubo.view * mesh_ubo.pos * mesh_ubo.rot * vec4(pos, 1.0);
-    outColor = vec3(0.1, 0.1, 0.2); /*vertColors[(gl_VertexIndex) % 3];*/
-    pos_to_frag = pos;
-    norm_to_frag = norm;
+    vec4 global_pos = mesh_ubo.rot * mesh_ubo.pos * vec4(pos, 1.0);
+    vec4 global_norm = mesh_ubo.rot * vec4(norm, 1.f);
+    
+    gl_Position = cam_ubo.proj * cam_ubo.view * global_pos;
+    pos_to_frag = global_pos.xyz;
+    norm_to_frag = global_norm.xyz;
 }

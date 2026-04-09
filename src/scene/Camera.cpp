@@ -13,7 +13,9 @@ Camera::Camera(GLFWwindow *const wnd, GraphicsContext *const gc, size_t buf_cnt,
     
     proj[1][1] *= -1.f;
     
-    setup_input_callbacks(wnd);
+    if (wnd != nullptr) {
+        setup_input_callbacks(wnd);
+    }
 
     camera_buffer.load();
     

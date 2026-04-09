@@ -5,7 +5,7 @@
 Scene::Scene(GLFWwindow *const window, GraphicsContext *const gc, Swapchain *const sc, CommandManager *const cmdmg) 
     : gc(gc), sc(sc), cmdmg(cmdmg) {
 
-    mesh = std::make_unique<Mesh>(gc, cmdmg, sc->get_images_cnt(), "data/monkey.obj");
+    mesh = std::make_unique<Mesh>(gc, cmdmg, sc->get_images_cnt(), "data/monkey_gourand_shading.obj");
     float ang = glm::radians(15.f);
     
     camera = std::make_unique<Camera>(
