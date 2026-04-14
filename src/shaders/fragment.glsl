@@ -68,20 +68,18 @@ vec3 blinn_phong(in PointLight light, in float shine, in vec3 normal, in vec3 vi
     return (ambient + diffuse + specular) * attitude;
 }
 
-// -4.f 0.f -4.f
+
 const PointLight light_source = PointLight(
-    vec3(-3.f, 0.f, -4.f),
-    vec3(0.05, 0.05, 0.05),
-    vec3(0.8, 0.8, 0.8),
-    vec3(0.9, 0.9, 0.9),
+    vec3(0.f, 15.f, -15.f),
+    vec3(0.08, 0.08, 0.08),      
+    vec3(1.4, 1.4, 1.4),         
+    vec3(1.6, 1.6, 1.6),        
     1.0,
-    0.09,
-    0.032
+    0.03,                        
+    0.01                         
 );
 
 void main() {
-    //float sc = max(dot(normalize(frag_norm), normalize(light_source - frag_pos)), 0.f) + 1.f;
-    //out_color = vec4(frag_color * sc, 1.0f);
     
     vec3 final_col = blinn_phong(
         light_source,

@@ -32,10 +32,13 @@ layout(location = 0) out vec3 pos_to_frag;
 layout(location = 1) out vec3 norm_to_frag;
 
 void main() {
-    vec4 global_pos = mesh_ubo.rot * mesh_ubo.pos * vec4(pos, 1.0);
-    vec4 global_norm = mesh_ubo.rot * vec4(norm, 1.f);
+    mat4 model = mesh_ubo.pos * mesh_ubo.rot * mesh_ubo.scl;
+    vec4 global_pos = model * vec4(pos, 1.0);
+    
+    mat3 normal_matrix = transpose(inverse(mat3(mesh_ubo.rot * mesh_ubo.scl)));
+    vec3 global_norm = normal_matrix * norm;
     
     gl_Position = cam_ubo.proj * cam_ubo.view * global_pos;
     pos_to_frag = global_pos.xyz;
-    norm_to_frag = global_norm.xyz;
+    norm_to_frag = global_norm;
 }
