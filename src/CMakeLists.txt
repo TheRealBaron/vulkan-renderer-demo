@@ -49,6 +49,7 @@ function(compile_shaders TARGET_NAME)
                     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/shaders"
                     COMMAND Vulkan::glslc 
                         -fshader-stage=${SHADER_STAGE}
+                        -Os
                         "${SOURCE_FILE}"
                         -o "${OUTPUT_SPV}"
                     DEPENDS "${SOURCE_FILE}"
