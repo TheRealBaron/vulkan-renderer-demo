@@ -22,6 +22,14 @@ A lightweight Vulkan renderer
 - **VulkanMemoryAllocator** 
 - **tinyobjloader**
 
+```powershell
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+# launch only from the same directory as executable for correct relative paths.
+cd build\src\ 
+.\vkhello.exe
+```
+
 > **Note:** All dependencies are resolved using `find_package`, including single-header libraries. Make sure to provide `CMake` paths for any custom installation locations of these packages.
 
 ## License
