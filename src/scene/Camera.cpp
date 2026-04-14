@@ -8,7 +8,7 @@ void mouse_move_callback(GLFWwindow* window, double xpos, double ypos);
 Camera::Camera(GLFWwindow *const wnd, GraphicsContext *const gc, size_t buf_cnt, glm::vec3 pos, glm::vec2 facing_angles, float aspect): 
     pos(pos), 
     facing(facing_angles),
-    proj(std::move(glm::perspectiveRH_ZO(3.14159f / 3, aspect, 0.1f, 25.f))),
+    proj(std::move(glm::perspectiveRH_ZO(3.14159f / 3, aspect, 0.1f, 50.f))),
     camera_buffer(gc, buf_cnt), last(0.f) {
     
     proj[1][1] *= -1.f;
@@ -53,7 +53,7 @@ void Camera::update_t(float t) {
 
 
 void Camera::move_event_callback(Move move, float d) {
-    constexpr float SPEED = 0.1f;
+    constexpr float SPEED = 0.5f; //0.1f
     glm::vec3 c_facing = from_spherical_to_cartecian(facing);
     glm::vec3 right = get_right(c_facing);
 	glm::mat3x3 splash_xz(

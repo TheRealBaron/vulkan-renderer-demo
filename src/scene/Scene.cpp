@@ -5,15 +5,16 @@
 Scene::Scene(GLFWwindow *const window, GraphicsContext *const gc, Swapchain *const sc, CommandManager *const cmdmg) 
     : gc(gc), sc(sc), cmdmg(cmdmg) {
 
-    mesh = std::make_unique<Mesh>(gc, cmdmg, sc->get_images_cnt(), "data/monkey_gourand_shading.obj");
-    float ang = glm::radians(15.f);
+    mesh = std::make_unique<Mesh>(gc, cmdmg, sc->get_images_cnt(), "data/pes.obj");
+    float ang_h = glm::radians(15.f);
+    float ang_v = glm::radians(22.5f);
     
     camera = std::make_unique<Camera>(
         window,
         gc, 
         sc->get_images_cnt(),
-        glm::vec3(0.f, glm::sin(ang), -glm::cos(ang)) * 5.f,
-        glm::vec2(0.f, -15.f),
+        glm::vec3(0.f, glm::sin(ang_v), -glm::cos(ang_h)) * 22.f,
+        glm::vec2(0.f, -22.5f),
         
         sc->get_aspect()
     );
@@ -173,12 +174,13 @@ void Scene::create_descriptor_sets() {
 
 
 void Scene::update(float t, size_t buf_i) {
-
+    glm::mat4 scl(0.1f);
+    scl[3][3] = 1.f;
     mesh->update_ubo(
         TransformBuffer::Ubo {
             animate::drammaticMovement(t),
             animate::drammaticRotation(t),
-            glm::mat4(1.f)
+            scl
         },
         buf_i
     );

@@ -29,7 +29,7 @@ glm::vec3 moveBeizer(float t) {
 }
 
 glm::vec3 moveUpDown(float t) {
-    return glm::vec3(0.f, 0.25f * glm::sin(t) * glm::sin(t), 0.f);
+    return glm::vec3(0.f, glm::sin(t) * glm::sin(t), 0.f);
 }
 
 glm::vec3 moveOutro(float t) {
@@ -37,11 +37,12 @@ glm::vec3 moveOutro(float t) {
 }
 
 glm::mat4x4 animate::drammaticMovement(float time) {
-    float withUpLimit = smoothMin(1.f, time * 2.f, 0.5f);
     glm::vec3 pos = moveUpDown(time);
     return glm::translate(glm::mat4x4(1.f), pos);
 }
 
 glm::mat4x4 animate::drammaticRotation(float time) {
-	return glm::rotate(glm::mat4x4(1.f), angle(time - 1.f), glm::vec3(0.f, 1.f, 0.f));
+    glm::mat4 res = glm::rotate(glm::mat4(1.f), 3.1419f * 0.25f * time, glm::vec3(0.f, 1.f, 0.f));
+    res = glm::rotate(res, 3.14195f * 0.5f, glm::vec3(1.f, 0.f, 0.f));
+    return res;
 }
