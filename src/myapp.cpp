@@ -1,17 +1,11 @@
 #include <vector>
 #include <array>
 #include <algorithm>
-#include <memory>
-#include <chrono>
 
 #include "core/Renderer.hpp"
 #include "scene/Scene.hpp"
 #include "myapp.h"
 #include "utils/logger.hpp"
-#include "resources/vertex_data.h"
-#include "resources/ReadonlyBuffer.hpp"
-#include "resources/UniformBuffer.hpp"
-#include "animations/animation.hpp"
 
 // common objects
 GLFWwindow* window;
